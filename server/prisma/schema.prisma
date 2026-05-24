@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomStatus {
+  ACTIVE
+  FINALIZED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  preferredStartHour  Int   @default(9)
+  preferredEndHour    Int   @default(17)
+  bufferMinutes       Int   @default(15)
+  defaultDurationMinutes Int @default(60)
+  unavailableDays     Json  @default("[]")
+  sleepStartHour      Int?  @default(23)
+  sleepEndHour        Int?  @default(7)
+
+  calendarAccounts CalendarAccount[]
+  roomParticipants RoomParticipant[]
+  ownedRooms       SchedulingRoom[]
+  availabilitySlots AvailabilitySlot[]
+
+  @@map("users")
+}
+
+model CalendarAccount {
+  id            String   @id @default(uuid())
+  userId        String
+  provider      String   @default("google")
+  email         String
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  calendarId    String   @default("primary")
+  syncToken     String?
+  lastSyncedAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events CalendarEvent[]
+
+  @@unique([userId, provider, email])
+  @@map("calendar_accounts")
+}
+
+model CalendarEvent {
+  id                String   @id @default(uuid())
+  calendarAccountId String
+  externalId        String
+  title             String?
+  description       String?
+  startTime         DateTime
+  endTime           DateTime
+  isRecurring       Boolean  @default(false)
+  recurrenceRule    String?
+  timezone          String?
+  isAllDay          Boolean  @default(false)
+  lastModifiedAt    DateTime?
+  etag              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  calendarAccount CalendarAccount @relation(fields: [calendarAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([calendarAccountId, externalId])
+  @@index([startTime, endTime])
+  @@index([calendarAccountId])
+  @@map("calendar_events")
+}
+
+model SchedulingRoom {
+  id              String     @id @default(uuid())
+  name            String
+  description     String?
+  createdById     String
+  durationMinutes Int        @default(60)
+  bufferMinutes   Int        @default(15)
+  earliestTime    Int?       @default(8)
+  latestTime      Int?       @default(20)
+  dateStart       DateTime?
+  dateEnd         DateTime?
+  timezone        String     @default("UTC")
+  status          RoomStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  createdBy         User               @relation(fields: [createdById], references: [id])
+  participants      RoomParticipant[]
+  suggestions       Suggestion[]
+  availabilitySlots AvailabilitySlot[]
+
+  @@map("scheduling_rooms")
+}
+
+model RoomParticipant {
+  id                   String            @id @default(uuid())
+  roomId               String
+  userId               String
+  role                 String            @default("member")
+  status               ParticipantStatus @default(PENDING)
+  availabilityOverride Json?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  room SchedulingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@map("room_participants")
+}
+
+model AvailabilitySlot {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    String
+  date      DateTime
+  startTime DateTime
+  endTime   DateTime
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  room SchedulingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id])
+
+  @@index([roomId, date])
+  @@map("availability_slots")
+}
+
+model Suggestion {
+  id                String   @id @default(uuid())
+  roomId            String
+  startTime         DateTime
+  endTime           DateTime
+  score             Int      @default(0)
+  participantCount  Int      @default(0)
+  totalCount        Int      @default(0)
+  availableUserIds  Json     @default("[]")
+  isBestMatch       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  room SchedulingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, score])
+  @@map("suggestions")
+}
