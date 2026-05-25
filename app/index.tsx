@@ -1,656 +1,1153 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
-const PEOPLE = ['Vos', 'María', 'Carlos', 'Sofía'];
-const COLORS = ['#534AB7', '#0F6E56', '#993C1D', '#993556'];
-const DAYS = ['Lun 26', 'Mar 27', 'Mié 28', 'Jue 29', 'Vie 30'];
-const HOURS = ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+const PEOPLE = [
+  { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
+  { initial: 'M', name: 'María', color: '#10B981', bg: '#D1FAE5' },
+  { initial: 'C', name: 'Carlos', color: '#F59E0B', bg: '#FEF3C7' },
+  { initial: 'S', name: 'Sofía', color: '#DB2777', bg: '#FCE7F3' },
+  { initial: 'D', name: 'Diego', color: '#9CA3AF', bg: '#F3F4F6' },
+];
 
-const INIT_BUSY: Record<string, string[]> = {
-  'Vos':    ['Lun 26-9:00','Lun 26-10:00','Mar 27-14:00','Mar 27-15:00','Mié 28-9:00','Jue 29-11:00','Jue 29-12:00'],
-  'María':  ['Lun 26-11:00','Lun 26-12:00','Mié 28-14:00','Mié 28-15:00','Vie 30-9:00','Vie 30-10:00'],
-  'Carlos': ['Mar 27-9:00','Mar 27-10:00','Jue 29-14:00','Vie 30-14:00','Vie 30-15:00','Lun 26-15:00'],
-  'Sofía':  ['Mié 28-10:00','Mié 28-11:00','Jue 29-9:00','Vie 30-11:00','Vie 30-12:00','Mar 27-16:00'],
+const DAYS = ['L', 'M', 'X', 'J', 'V'];
+const HOURS = ['9h', '10h', '11h', '12h', '13h', '14h', '15h', '16h'];
+
+const HEATMAP = [
+  [2, 1, 0, 0, 1],
+  [2, 0, 0, 1, 1],
+  [1, 0, 0, 0, 2],
+  [0, 0, 1, 1, 2],
+  [0, 1, 1, 0, 1],
+  [1, 0, 0, 0, 0],
+  [2, 0, 0, 1, 0],
+  [2, 1, 0, 0, 0],
+];
+
+const CELL_COLORS: Record<number, string> = {
+  0: '#10B981',
+  1: '#F59E0B',
+  2: '#F3F4F6',
+};
+
+const OPTIONS = [
+  { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5', first: true },
+  { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Jueves 16 ene', time: '8:00 – 10:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+];
+
+const STATUS_TEXT: Record<string, string> = {
+  conectado: 'conectado ✓',
+  esperando: 'esperando…',
+  invitado: 'invitado',
 };
 
 export default function HomeScreen() {
   const [screen, setScreen] = useState('inicio');
-  const [busy] = useState(INIT_BUSY);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [groupCode] = useState('PLAN-7X4K');
-
-  const getCount = (day: string, hour: string) => {
-    const slot = `${day}-${hour}`;
-    return PEOPLE.filter(p => !busy[p].includes(slot)).length;
-  };
-
-  const getBg = (count: number) => {
-    if (count === 4) return '#1D9E75';
-    if (count === 3) return '#5DCAA5';
-    if (count === 2) return '#EF9F27';
-    if (count === 1) return '#F0997B';
-    return '#F7C1C1';
-  };
-
-  const getTextColor = (count: number) => (count >= 2 ? '#fff' : '#993C1D');
-
-  const bestSlots = () => {
-    const slots: { day: string; hour: string; count: number }[] = [];
-    DAYS.forEach(d => HOURS.forEach(h => {
-      const c = getCount(d, h);
-      slots.push({ day: d, hour: h, count: c });
-    }));
-    return slots.sort((a, b) => b.count - a.count).slice(0, 3);
-  };
 
   if (screen === 'inicio') {
     return (
-      <View style={styles.wrap}>
-        <View style={styles.nav}>
-          <Text style={styles.navTitleCenter}>📅 CuandoPueden</Text>
+      <View style={s0.wrap}>
+        <StatusBar style="light" />
+        <View style={s0.center}>
+          <View style={s0.logo}>
+            <Text style={s0.logoText}>📅</Text>
+          </View>
+          <Text style={s0.title}>Cuándo</Text>
+          <Text style={s0.subtitle}>
+            Encuentra el momento perfecto{'\n'}para quedar con tu gente
+          </Text>
         </View>
-        <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-          <View style={styles.hero}>
-            <Text style={styles.heroEmoji}>🗓️</Text>
-            <Text style={styles.h1}>Coordiná planes sin el caos</Text>
-            <Text style={styles.sub}>Compará disponibilidad con tu grupo y encontrá el momento perfecto para todos.</Text>
-          </View>
-          <TouchableOpacity style={styles.btn} onPress={() => setScreen('grupo')}>
-            <Text style={styles.btnText}>Crear grupo nuevo</Text>
+        <View style={s0.buttons}>
+          <TouchableOpacity style={s0.primaryBtn} onPress={() => setScreen('crear')}>
+            <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnOut}>
-            <Text style={styles.btnOutText}>Unirme a un grupo existente</Text>
+          <TouchableOpacity style={s0.ghostBtn}>
+            <Text style={s0.ghostBtnText}>Tengo un código de invitación</Text>
           </TouchableOpacity>
-          <View style={styles.howSection}>
-            <Text style={styles.howTitle}>¿Cómo funciona?</Text>
-            {[
-              ['1. Creás un grupo', 'Compartís un código o link con tus amigos'],
-              ['2. Conectan sus calendarios', 'Cada uno vincula el suyo con un clic'],
-              ['3. Ven cuándo coinciden', 'La app muestra los mejores momentos automáticamente'],
-            ].map(([t, d]) => (
-              <View key={t} style={styles.howRow}>
-                <View style={styles.howDot} />
-                <View style={styles.howContent}>
-                  <Text style={styles.howStep}>{t}</Text>
-                  <Text style={styles.howDesc}>{d}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+        </View>
       </View>
     );
   }
 
-  if (screen === 'grupo') {
+  if (screen === 'crear') {
     return (
-      <View style={styles.wrap}>
-        <View style={styles.nav}>
+      <View style={s1.wrap}>
+        <StatusBar style="dark" />
+        <View style={navStyle.wrap}>
           <TouchableOpacity onPress={() => setScreen('inicio')}>
-            <Text style={styles.back}>← Volver</Text>
+            <Text style={navStyle.back}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Tu grupo</Text>
-          <View style={{ width: 48 }} />
+          <Text style={navStyle.title}>Nuevo plan</Text>
+          <View style={{ width: 30 }} />
         </View>
-        <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-          <Text style={styles.h1}>Plan del finde 🎉</Text>
-          <Text style={styles.sub}>Compartí este código con tu grupo para que se unan.</Text>
-          <View style={styles.card}>
-            <Text style={styles.label}>Código del grupo</Text>
-            <Text style={styles.code}>{groupCode}</Text>
-            <Text style={styles.codeHint}>o compartí el link: cuandopueden.app/{groupCode.toLowerCase()}</Text>
+        <ScrollView style={s1.body}>
+          <Text style={s1.sectionLabel}>Nuevo plan</Text>
+          <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
+          <Text style={s1.sectionLabel}>Nombre del plan</Text>
+          <View style={s1.inputActive}>
+            <Text style={s1.inputText}>Cena de cumpleaños 🎂</Text>
           </View>
-          <Text style={styles.sectionLabel}>Miembros ({PEOPLE.length}/10)</Text>
-          {PEOPLE.map((p, i) => (
-            <View key={p} style={styles.personRow}>
-              <View style={[styles.avatar, { backgroundColor: COLORS[i] }]}>
-                <Text style={styles.avatarText}>{p[0]}</Text>
-              </View>
-              <View style={styles.personInfo}>
-                <Text style={styles.personName}>{p}</Text>
-                <Text style={[styles.personStatus, { color: i < 3 ? '#1D9E75' : '#888' }]}>
-                  {i < 3 ? '✓ Calendario conectado' : '⏳ Pendiente'}
-                </Text>
-              </View>
+          <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
+          <View style={s1.dateRow}>
+            <View style={s1.dateBox}>
+              <Text style={s1.dateLbl}>Desde</Text>
+              <Text style={s1.dateVal}>Lun 13 ene</Text>
             </View>
-          ))}
-          <TouchableOpacity style={styles.btn} onPress={() => setScreen('grilla')}>
-            <Text style={styles.btnText}>Ver disponibilidad →</Text>
+            <View style={s1.dateBox}>
+              <Text style={s1.dateLbl}>Hasta</Text>
+              <Text style={s1.dateVal}>Dom 19 ene</Text>
+            </View>
+          </View>
+          <Text style={s1.sectionLabel}>Duración</Text>
+          <View style={s1.durRow}>
+            {['1h', '2h', '3h'].map((d) => (
+              <View key={d} style={[s1.durOpt, d === '2h' && s1.durOptSel]}>
+                <Text style={[s1.durOptText, d === '2h' && s1.durOptTextSel]}>{d}</Text>
+              </View>
+            ))}
+            <View style={s1.durOpt}>
+              <Text style={s1.durOptText}>Todo el día</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={s1.nextBtn} onPress={() => setScreen('invitar')}>
+            <Text style={s1.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
     );
   }
 
-  if (screen === 'grilla') {
+  if (screen === 'invitar') {
     return (
-      <View style={styles.wrap}>
-        <View style={styles.nav}>
-          <TouchableOpacity onPress={() => setScreen('grupo')}>
-            <Text style={styles.back}>← Grupo</Text>
+      <View style={s2.wrap}>
+        <StatusBar style="dark" />
+        <View style={navStyle.wrap}>
+          <TouchableOpacity onPress={() => setScreen('crear')}>
+            <Text style={navStyle.back}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Disponibilidad</Text>
-          <Text style={styles.weekLabel}>Semana 26/5</Text>
+          <Text style={navStyle.title}>Invitar</Text>
+          <View style={{ width: 30 }} />
         </View>
-        <View style={styles.legend}>
-          {[
-            { color: '#1D9E75', label: 'Todos (4)' },
-            { color: '#5DCAA5', label: '3' },
-            { color: '#EF9F27', label: '2' },
-            { color: '#F0997B', label: '1' },
-          ].map(({ color, label }) => (
-            <View key={label} style={styles.legendItem}>
-              <View style={[styles.legendSwatch, { backgroundColor: color }]} />
-              <Text style={styles.legendLabel}>{label}</Text>
+        <ScrollView style={s2.body}>
+          <Text style={s2.heading}>Invita a tu grupo 👥</Text>
+          <View style={s2.linkCard}>
+            <Text style={s2.linkCardLabel}>Enlace de invitación</Text>
+            <View style={s2.linkRow}>
+              <Text style={s2.linkText} numberOfLines={1}>cuando.app/plan/abc123</Text>
+              <View style={s2.copyBtn}>
+                <Text style={s2.copyBtnText}>Copiar</Text>
+              </View>
             </View>
-          ))}
-        </View>
-        <Text style={styles.gridHint}>Tocá un horario para ver detalles</Text>
-        <ScrollView horizontal style={styles.gridScroll}>
-          <View>
-            <View style={styles.gridHeader}>
-              <View style={styles.cornerCell} />
-              {DAYS.map(d => (
-                <View key={d} style={styles.dayHeaderCell}>
-                  <Text style={styles.dayHeaderText}>{d}</Text>
-                </View>
-              ))}
-            </View>
-            {HOURS.map(h => (
-              <View key={h} style={styles.gridRow}>
-                <View style={styles.hourCell}>
-                  <Text style={styles.hourText}>{h}</Text>
-                </View>
-                {DAYS.map(d => {
-                  const count = getCount(d, h);
-                  const slot = `${d}-${h}`;
-                  const isSel = selected === slot;
-                  return (
-                    <TouchableOpacity
-                      key={d}
-                      style={[
-                        styles.gridCell,
-                        { backgroundColor: getBg(count) },
-                        isSel && styles.gridCellSelected,
-                      ]}
-                      onPress={() => setSelected(isSel ? null : slot)}
-                    >
-                      <Text style={[styles.gridCellText, { color: getTextColor(count) }]}>
-                        {count}/4
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+          </View>
+          <View style={s2.shareRow}>
+            {[
+              { icon: '💬', label: 'WhatsApp' },
+              { icon: '📱', label: 'Mensaje' },
+              { icon: '📧', label: 'Email' },
+            ].map((s) => (
+              <View key={s.label} style={s2.shareBtn}>
+                <Text style={s2.shareIcon}>{s.icon}</Text>
+                <Text style={s2.shareLabel}>{s.label}</Text>
               </View>
             ))}
           </View>
-        </ScrollView>
-        {selected && (() => {
-          const parts = selected.split('-');
-          const h = parts.pop()!;
-          const d = parts.join('-');
-          const avail = PEOPLE.filter(p => !busy[p].includes(selected));
-          const occ = PEOPLE.filter(p => busy[p].includes(selected));
-          return (
-            <View style={styles.detailCard}>
-              <Text style={styles.detailTitle}>{d} · {h}</Text>
-              <Text style={styles.detailAvail}>✓ Pueden: {avail.join(', ') || '—'}</Text>
-              <Text style={styles.detailBusy}>✗ Ocupados: {occ.join(', ') || '—'}</Text>
-              <TouchableOpacity style={styles.confirmBtn} onPress={() => { setConfirmed(selected); setScreen('resultado'); }}>
-                <Text style={styles.confirmBtnText}>Confirmar este horario ✓</Text>
-              </TouchableOpacity>
+          <Text style={s2.peopleTitle}>Personas unidas · 2/5</Text>
+          {PEOPLE.slice(0, -1).map((p, i) => (
+            <View key={p.name} style={s2.personRow}>
+              <View style={[s2.avatar, { backgroundColor: p.bg }]}>
+                <Text style={[s2.avatarText, { color: p.color }]}>{p.initial}</Text>
+              </View>
+              <Text style={s2.personName}>{p.name}</Text>
+              <Text style={[s2.personStatus, {
+                color: i < 2 ? '#10B981' : i < 4 ? '#F59E0B' : '#9CA3AF',
+              }]}>
+                {i < 2 ? STATUS_TEXT.conectado : i < 4 ? STATUS_TEXT.esperando : STATUS_TEXT.invitado}
+              </Text>
             </View>
-          );
-        })()}
-        <TouchableOpacity style={styles.btnOut} onPress={() => setScreen('resultado')}>
-          <Text style={styles.btnOutText}>Ver mejores horarios sugeridos →</Text>
-        </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={s2.nextBtn} onPress={() => setScreen('conectar')}>
+            <Text style={s2.nextBtnText}>Ya están todos →</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     );
   }
 
-  const best = bestSlots();
-  return (
-    <View style={styles.wrap}>
-      <View style={styles.nav}>
-        <TouchableOpacity onPress={() => setScreen('grilla')}>
-          <Text style={styles.back}>← Grilla</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Mejores horarios</Text>
-        <View style={{ width: 48 }} />
-      </View>
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        {confirmed && (() => {
-          const parts = confirmed.split('-');
-          const h = parts.pop()!;
-          const d = parts.join('-');
-          return (
-            <View style={styles.confirmedBanner}>
-              <Text style={styles.confirmedTitle}>Plan confirmado</Text>
-              <Text style={styles.confirmedDetail}>
-                {d} a las {h}{'\n'}Se notificó a los 4 miembros del grupo.
-              </Text>
-            </View>
-          );
-        })()}
-        <Text style={styles.sectionLabel}>Sugeridos por la app</Text>
-        {best.map(({ day, hour, count }, i) => (
-          <View key={`${day}-${hour}`} style={[styles.suggestionCard, i === 0 && styles.suggestionBest]}>
-            <View style={styles.suggestionHeader}>
-              <View>
-                <Text style={styles.suggestionTime}>{day} · {hour}</Text>
-                <Text style={[styles.suggestionCount, { color: count === 4 ? '#1D9E75' : '#EF9F27' }]}>
-                  {count === 4 ? '✓ Todos pueden' : `${count} de 4 pueden`}
-                </Text>
-                <Text style={styles.suggestionPeople}>
-                  {PEOPLE.filter(p => !busy[p].includes(`${day}-${hour}`)).join(', ')}
-                </Text>
+  if (screen === 'conectar') {
+    return (
+      <View style={s3.wrap}>
+        <StatusBar style="dark" />
+        <View style={navStyle.wrap}>
+          <TouchableOpacity onPress={() => setScreen('invitar')}>
+            <Text style={navStyle.back}>←</Text>
+          </TouchableOpacity>
+          <Text style={navStyle.title}>Conectar</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={s3.body}>
+          <View style={s3.calIcon}>
+            <Text style={{ fontSize: 44 }}>📅</Text>
+          </View>
+          <Text style={s3.title}>Conecta tu calendario</Text>
+          <Text style={s3.subtitle}>
+            Solo vemos cuándo estás ocupada.{'\n'}
+            <Text style={{ color: '#10B981', fontWeight: '700' }}>
+              Nunca modificaremos tu calendario.
+            </Text>
+          </Text>
+          <View style={s3.privacyList}>
+            {[
+              { icon: '🔒', text: 'Solo lectura — sin cambios' },
+              { icon: '👁️', text: 'El grupo solo ve libre / ocupado' },
+              { icon: '🗑️', text: 'Desconecta cuando quieras' },
+            ].map((item) => (
+              <View key={item.text} style={s3.privacyItem}>
+                <Text style={s3.privacyIcon}>{item.icon}</Text>
+                <Text style={s3.privacyText}>{item.text}</Text>
               </View>
-              <View style={styles.suggestionScore}>
-                <Text style={[styles.scoreText, { color: getBg(count) }]}>{count}/4</Text>
-                {i === 0 && <Text style={styles.bestLabel}>MEJOR</Text>}
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.elegirBtn, confirmed === `${day}-${hour}` && styles.elegirBtnActive]}
-              onPress={() => setConfirmed(`${day}-${hour}`)}
-            >
-              <Text style={[styles.elegirBtnText, confirmed === `${day}-${hour}` && styles.elegirBtnTextActive]}>
-                {confirmed === `${day}-${hour}` ? '✓ Confirmado' : 'Elegir este horario'}
-              </Text>
+            ))}
+          </View>
+          <View style={s3.bottomBtns}>
+            <TouchableOpacity style={s3.googleBtn} onPress={() => setScreen('heatmap')}>
+              <Text style={s3.googleG}>G</Text>
+              <Text style={s3.googleText}> Conectar con Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s3.manualBtn}>
+              <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
             </TouchableOpacity>
           </View>
-        ))}
-        <TouchableOpacity style={styles.btnOut} onPress={() => setScreen('grilla')}>
-          <Text style={styles.btnOutText}>← Ver grilla completa</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === 'heatmap') {
+    return (
+      <View style={s4.wrap}>
+        <StatusBar style="dark" />
+        <View style={navStyle.wrap}>
+          <TouchableOpacity onPress={() => setScreen('conectar')}>
+            <Text style={navStyle.back}>←</Text>
+          </TouchableOpacity>
+          <Text style={navStyle.title}>Disponibilidad</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={s4.header}>
+          <View>
+            <Text style={s4.heatTitle}>Disponibilidad</Text>
+            <Text style={s4.heatSub}>4 personas · 13–19 enero</Text>
+          </View>
+          <View style={s4.avatarsRow}>
+            {PEOPLE.slice(0, 4).map((p, i) => (
+              <View key={p.name} style={[s4.avaSm, {
+                backgroundColor: p.bg,
+                marginLeft: i > 0 ? -6 : 0,
+              }]}>
+                <Text style={[s4.avaSmText, { color: p.color }]}>{p.initial}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={s4.gridContainer}>
+          <View style={s4.gridHeader}>
+            <View style={{ width: 22 }} />
+            {DAYS.map((d) => (
+              <View key={d} style={s4.dayCell}>
+                <Text style={s4.dayLabel}>{d}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={s4.heatGrid}>
+            {HEATMAP.map((row, ri) => (
+              <View key={ri} style={s4.heatRow}>
+                <View style={s4.hourCell}>
+                  <Text style={s4.hourLabel}>{HOURS[ri]}</Text>
+                </View>
+                {row.map((v, ci) => (
+                  <View
+                    key={ci}
+                    style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={s4.legend}>
+          {[
+            { color: '#10B981', label: 'Todos libres' },
+            { color: '#F59E0B', label: 'Algunos' },
+            { color: '#F3F4F6', label: 'Nadie' },
+          ].map((l) => (
+            <View key={l.label} style={s4.legendItem}>
+              <View style={[s4.legendDot, { backgroundColor: l.color }]} />
+              <Text style={s4.legendLabel}>{l.label}</Text>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
+          <Text style={s4.actionBtnText}>Ver mejores horarios ✨</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (screen === 'mejores') {
+    return (
+      <View style={s5.wrap}>
+        <StatusBar style="dark" />
+        <View style={navStyle.wrap}>
+          <TouchableOpacity onPress={() => setScreen('heatmap')}>
+            <Text style={navStyle.back}>←</Text>
+          </TouchableOpacity>
+          <Text style={navStyle.title}>Mejores horarios</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <ScrollView style={s5.body}>
+          <Text style={s5.title}>Mejores opciones ✨</Text>
+          <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
+          {OPTIONS.map((o, i) => (
+            <View key={o.day} style={[s5.card, { backgroundColor: o.bg, borderColor: o.color + '30' }]}>
+              <View style={s5.cardTop}>
+                <View>
+                  <Text style={s5.cardDay}>{o.day}</Text>
+                  <Text style={s5.cardTime}>{o.time}</Text>
+                </View>
+                <View style={[s5.badge, { backgroundColor: o.color }]}>
+                  <Text style={s5.badgeText}>{o.count}/4</Text>
+                </View>
+              </View>
+              <View style={s5.cardBottom}>
+                <View style={s5.avatarsRow}>
+                  {PEOPLE.slice(0, o.count).map((p, j) => (
+                    <View key={p.name} style={[s5.avaSm, {
+                      backgroundColor: p.bg,
+                      marginLeft: j > 0 ? -6 : 0,
+                    }]}>
+                      <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
+                    </View>
+                  ))}
+                </View>
+                {o.first ? (
+                  <TouchableOpacity
+                    style={[s5.chooseBtn, { backgroundColor: o.color }]}
+                    onPress={() => setScreen('confirmado')}
+                  >
+                    <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[s5.canText, { color: o.color }]}>{o.count}/4 pueden</Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={s6.wrap}>
+      <StatusBar style="dark" />
+      <View style={navStyle.wrap}>
+        <TouchableOpacity onPress={() => setScreen('mejores')}>
+          <Text style={navStyle.back}>←</Text>
+        </TouchableOpacity>
+        <Text style={navStyle.title}>Confirmado</Text>
+        <View style={{ width: 30 }} />
+      </View>
+      <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
+        <View style={s6.successIcon}>
+          <Text style={{ fontSize: 34 }}>✅</Text>
+        </View>
+        <Text style={s6.title}>¡Plan confirmado!</Text>
+        <Text style={s6.subtitle}>Ya saben cuándo se van a ver</Text>
+        <View style={s6.confirmCard}>
+          <Text style={s6.cardLbl}>Plan</Text>
+          <Text style={s6.cardName}>Cena de cumpleaños 🎂</Text>
+          <View style={s6.dateRow}>
+            <View style={s6.dateIcon}>
+              <Text style={{ fontSize: 18 }}>📅</Text>
+            </View>
+            <View>
+              <Text style={s6.dateVal}>Miércoles 15 de enero</Text>
+              <Text style={s6.timeVal}>7:00 PM – 9:00 PM · 2 horas</Text>
+            </View>
+          </View>
+          <Text style={s6.attendLbl}>Asistentes</Text>
+          <View style={s6.attendRow}>
+            {PEOPLE.slice(0, 4).map((p) => (
+              <View key={p.name} style={s6.attendPerson}>
+                <View style={[s6.attendAva, { backgroundColor: p.bg }]}>
+                  <Text style={[s6.attendAvaText, { color: p.color }]}>{p.initial}</Text>
+                </View>
+                <Text style={s6.attendName}>
+                  {p.name === 'Tú' ? 'Ana' : p.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <TouchableOpacity style={s6.gcalBtn}>
+          <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s6.shareBtn}>
+          <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const navStyle = StyleSheet.create({
   wrap: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  nav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e5e5',
     backgroundColor: '#fff',
-  },
-  navTitleCenter: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#534AB7',
-  },
-  navTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E7EB',
   },
   back: {
-    fontSize: 13,
-    color: '#534AB7',
+    fontSize: 15,
+    color: '#5B4FDB',
+    fontWeight: '600',
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+});
+
+const s0 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#5B4FDB',
+    justifyContent: 'space-between',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  logo: {
+    width: 78,
+    height: 78,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
+  logoText: {
+    fontSize: 38,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -1.5,
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.62)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  buttons: {
+    paddingHorizontal: 28,
+    paddingBottom: 28,
+    gap: 10,
+  },
+  primaryBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 17,
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    color: '#5B4FDB',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  ghostBtn: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 18,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  ghostBtnText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+});
+
+const s1 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
   body: {
     flex: 1,
-  },
-  bodyContent: {
     padding: 20,
   },
-  hero: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  heroEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  h1: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1a1a1a',
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
     marginBottom: 6,
-    textAlign: 'center',
+    marginTop: 10,
   },
-  sub: {
+  heading: {
+    fontSize: 21,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  inputActive: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    borderColor: '#5B4FDB',
+    borderRadius: 14,
+    padding: 12,
+    paddingHorizontal: 16,
+  },
+  inputText: {
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dateBox: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 10,
+    paddingHorizontal: 14,
+  },
+  dateLbl: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginBottom: 3,
+  },
+  dateVal: {
     fontSize: 14,
-    color: '#666',
-    lineHeight: 21,
-    textAlign: 'center',
-    marginBottom: 24,
+    fontWeight: '600',
+    color: '#111827',
   },
-  btn: {
-    backgroundColor: '#534AB7',
-    borderRadius: 12,
-    paddingVertical: 13,
+  durRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  durOpt: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 9,
     alignItems: 'center',
-    marginBottom: 10,
   },
-  btnText: {
+  durOptSel: {
+    backgroundColor: '#5B4FDB',
+    borderColor: '#5B4FDB',
+  },
+  durOptText: {
+    fontSize: 13,
+    color: '#111827',
+  },
+  durOptTextSel: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: '600',
   },
-  btnOut: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 13,
+  nextBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 10,
-    borderWidth: 1.5,
-    borderColor: '#534AB7',
-  },
-  btnOutText: {
-    color: '#534AB7',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  howSection: {
     marginTop: 24,
   },
-  howTitle: {
-    fontSize: 13,
+  nextBtnText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
-    color: '#888',
-    marginBottom: 12,
   },
-  howRow: {
-    flexDirection: 'row',
-    gap: 12,
+});
+
+const s2 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  body: {
+    flex: 1,
+    padding: 20,
+  },
+  heading: {
+    fontSize: 21,
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 14,
   },
-  howDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#534AB7',
-    marginTop: 5,
-  },
-  howContent: {
-    flex: 1,
-  },
-  howStep: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  howDesc: {
-    fontSize: 13,
-    color: '#666',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderWidth: 0.5,
-    borderColor: '#e5e5e5',
-    borderRadius: 12,
-    padding: 16,
+  linkCard: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: 'rgba(91,79,219,0.15)',
+    borderRadius: 16,
+    padding: 13,
+    paddingHorizontal: 15,
     marginBottom: 12,
   },
-  label: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 4,
-  },
-  code: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 3,
-    color: '#534AB7',
-  },
-  codeHint: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-  },
-  sectionLabel: {
-    fontSize: 14,
+  linkCardLabel: {
+    fontSize: 11,
+    color: '#5B4FDB',
     fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  linkText: {
+    fontSize: 13,
+    color: '#6B7280',
+    flex: 1,
+  },
+  copyBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  copyBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  shareRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  shareBtn: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  shareIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  shareLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  peopleTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 7,
   },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
+    width: 33,
+    height: 33,
+    borderRadius: 16.5,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
-    color: '#fff',
     fontSize: 13,
-    fontWeight: '600',
-  },
-  personInfo: {
-    flex: 1,
+    fontWeight: '700',
   },
   personName: {
+    flex: 1,
     fontSize: 14,
+    color: '#111827',
     fontWeight: '500',
-    color: '#1a1a1a',
   },
   personStatus: {
     fontSize: 12,
+    fontWeight: '500',
   },
-  weekLabel: {
+  nextBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  nextBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
+const s3 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  body: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  calIcon: {
+    width: 94,
+    height: 94,
+    borderRadius: 26,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+    marginTop: 10,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 23,
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  privacyList: {
+    width: '100%',
+  },
+  privacyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  privacyIcon: {
+    fontSize: 17,
+    width: 22,
+  },
+  privacyText: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  bottomBtns: {
+    width: '100%',
+    marginTop: 'auto',
+    paddingBottom: 12,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleG: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: '#4285F4',
+  },
+  googleText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  manualBtn: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  manualBtnText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+});
+
+const s4 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  heatTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  heatSub: {
     fontSize: 12,
-    color: '#888',
+    color: '#6B7280',
+  },
+  avatarsRow: {
+    flexDirection: 'row',
+  },
+  avaSm: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avaSmText: {
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  gridContainer: {
+    paddingHorizontal: 14,
+  },
+  gridHeader: {
+    flexDirection: 'row',
+    gap: 3,
+    marginBottom: 3,
+  },
+  dayCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dayLabel: {
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  heatGrid: {
+    gap: 3,
+  },
+  heatRow: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  hourCell: {
+    width: 22,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 2,
+  },
+  hourLabel: {
+    fontSize: 9,
+    color: '#6B7280',
+  },
+  heatCell: {
+    flex: 1,
+    minHeight: 22,
+    borderRadius: 4,
   },
   legend: {
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
-    backgroundColor: '#fff',
+    gap: 12,
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  legendSwatch: {
+  legendDot: {
     width: 10,
     height: 10,
     borderRadius: 2,
   },
   legendLabel: {
-    fontSize: 11,
-    color: '#666',
-  },
-  gridHint: {
-    fontSize: 12,
-    color: '#888',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    backgroundColor: '#fff',
-  },
-  gridScroll: {
-    paddingHorizontal: 8,
-  },
-  gridHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cornerCell: {
-    width: 36,
-    padding: 4,
-  },
-  dayHeaderCell: {
-    width: 56,
-    paddingVertical: 6,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-  },
-  dayHeaderText: {
-    fontWeight: '600',
-    color: '#444',
-    fontSize: 11,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  hourCell: {
-    width: 36,
-    paddingRight: 4,
-    alignItems: 'flex-end',
-  },
-  hourText: {
     fontSize: 10,
-    color: '#888',
+    color: '#6B7280',
   },
-  gridCell: {
-    width: 56,
-    height: 28,
-    margin: 2,
-    borderRadius: 4,
-    justifyContent: 'center',
+  actionBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 16,
+    paddingVertical: 13,
     alignItems: 'center',
-  },
-  gridCellSelected: {
-    borderWidth: 2,
-    borderColor: '#26215C',
-  },
-  gridCellText: {
-    fontWeight: '600',
-    fontSize: 11,
-  },
-  detailCard: {
-    marginHorizontal: 16,
-    marginVertical: 12,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#534AB7',
-    borderRadius: 12,
-    padding: 14,
-  },
-  detailTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  detailAvail: {
-    fontSize: 12,
-    color: '#1D9E75',
-    marginBottom: 4,
-  },
-  detailBusy: {
-    fontSize: 12,
-    color: '#E24B4A',
+    marginHorizontal: 14,
     marginBottom: 12,
   },
-  confirmBtn: {
-    backgroundColor: '#534AB7',
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  confirmBtnText: {
+  actionBtnText: {
     color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  confirmedBanner: {
-    backgroundColor: '#E1F5EE',
-    borderWidth: 1,
-    borderColor: '#1D9E75',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  confirmedTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#085041',
   },
-  confirmedDetail: {
-    fontSize: 13,
-    color: '#0F6E56',
-    marginTop: 2,
-  },
-  suggestionCard: {
+});
+
+const s5 = StyleSheet.create({
+  wrap: {
+    flex: 1,
     backgroundColor: '#fff',
-    borderWidth: 0.5,
-    borderColor: '#e5e5e5',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
   },
-  suggestionBest: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#1D9E75',
-    borderColor: '#e5e5e5',
+  body: {
+    flex: 1,
+    padding: 18,
   },
-  suggestionHeader: {
+  title: {
+    fontSize: 21,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 3,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 14,
+  },
+  card: {
+    borderRadius: 18,
+    padding: 15,
+    marginBottom: 9,
+    borderWidth: 1.5,
+  },
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 9,
   },
-  suggestionTime: {
+  cardDay: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
   },
-  suggestionCount: {
+  cardTime: {
     fontSize: 13,
-    marginTop: 2,
+    color: '#6B7280',
   },
-  suggestionPeople: {
+  badge: {
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  badgeText: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#fff',
   },
-  suggestionScore: {
+  cardBottom: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  scoreText: {
-    fontSize: 22,
+  avatarsRow: {
+    flexDirection: 'row',
+  },
+  avaSm: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avaSmText: {
+    fontSize: 8,
     fontWeight: '700',
   },
-  bestLabel: {
-    fontSize: 10,
-    color: '#1D9E75',
-    fontWeight: '600',
+  chooseBtn: {
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
   },
-  elegirBtn: {
-    marginTop: 10,
-    borderRadius: 12,
-    paddingVertical: 9,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#534AB7',
-  },
-  elegirBtnActive: {
-    backgroundColor: '#534AB7',
-    borderWidth: 0,
-  },
-  elegirBtnText: {
+  chooseBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#534AB7',
-  },
-  elegirBtnTextActive: {
     color: '#fff',
+  },
+  canText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
+
+const s6 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  body: {
+    flex: 1,
+  },
+  bodyContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  successIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 18,
+  },
+  confirmCard: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 20,
+    padding: 17,
+    width: '100%',
+    marginBottom: 14,
+  },
+  cardLbl: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  cardName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 14,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 11,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  dateIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateVal: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  timeVal: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  attendLbl: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 7,
+  },
+  attendRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  attendPerson: {
+    alignItems: 'center',
+  },
+  attendAva: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 3,
+  },
+  attendAvaText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  attendName: {
+    fontSize: 10,
+    color: '#6B7280',
+  },
+  gcalBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 9,
+  },
+  gcalBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  shareBtn: {
+    backgroundColor: '#D1FAE5',
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    width: '100%',
+  },
+  shareBtnText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
