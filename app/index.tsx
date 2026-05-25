@@ -29,13 +29,13 @@ const HEATMAP = [
 const CELL_COLORS: Record<number, string> = {
   0: '#10B981',
   1: '#F59E0B',
-  2: '#F3F4F6',
+  2: '#EF4444',
 };
 
 const OPTIONS = [
-  { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5', first: true },
-  { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 3, color: '#10B981', bg: '#D1FAE5' },
   { day: 'Jueves 16 ene', time: '8:00 – 10:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
 const STATUS_TEXT: Record<string, string> = {
@@ -68,6 +68,7 @@ export default function HomeScreen() {
   const [toDate, setToDate] = useState(new Date(2026, 0, 19));
   const [durationIdx, setDurationIdx] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
 
   if (screen === 'inicio') {
     return (
@@ -291,8 +292,23 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s4.gridContainer}>
+          <View style={s4.gridScoreRow}>
+            <View style={{ width: 28 }} />
+            {DAYS.map((_, ci) => {
+              const green = HEATMAP.filter(r => r[ci] === 0).length;
+              const red = HEATMAP.filter(r => r[ci] === 2).length;
+              return (
+                <View key={ci} style={s4.dayCell}>
+                  <Text style={[s4.scoreText, { color: green >= 4 ? '#10B981' : '#F59E0B' }]}>
+                    {green}/8
+                  </Text>
+                  {red > 0 && <Text style={s4.scoreRed}>{red}🔴</Text>}
+                </View>
+              );
+            })}
+          </View>
           <View style={s4.gridHeader}>
-            <View style={{ width: 22 }} />
+            <View style={{ width: 28 }} />
             {DAYS.map((d) => (
               <View key={d} style={s4.dayCell}>
                 <Text style={s4.dayLabel}>{d}</Text>
@@ -319,7 +335,7 @@ export default function HomeScreen() {
           {[
             { color: '#10B981', label: 'Todos libres' },
             { color: '#F59E0B', label: 'Algunos' },
-            { color: '#F3F4F6', label: 'Nadie' },
+            { color: '#EF4444', label: 'Nadie' },
           ].map((l) => (
             <View key={l.label} style={s4.legendItem}>
               <View style={[s4.legendDot, { backgroundColor: l.color }]} />
@@ -342,41 +358,55 @@ export default function HomeScreen() {
         <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
-          {OPTIONS.map((o, i) => (
-            <View key={o.day} style={[s5.card, { backgroundColor: o.bg, borderColor: o.color + '30' }]}>
-              <View style={s5.cardTop}>
-                <View>
-                  <Text style={s5.cardDay}>{o.day}</Text>
-                  <Text style={s5.cardTime}>{o.time}</Text>
+          {OPTIONS.map((o, i) => {
+            const isFirst = i === 0;
+            const c = isFirst ? '#10B981' : '#F59E0B';
+            const cl = isFirst ? '#D1FAE5' : '#FEF3C7';
+            const selected = selectedOption === i;
+            return (
+              <TouchableOpacity
+                key={o.day}
+                style={[s5.card, {
+                  backgroundColor: cl,
+                  borderColor: selected ? c : c + '30',
+                  borderWidth: selected ? 2.5 : 1.5,
+                }]}
+                onPress={() => setSelectedOption(i)}
+              >
+                <View style={s5.cardTop}>
+                  <View>
+                    <Text style={s5.cardDay}>{o.day}</Text>
+                    <Text style={s5.cardTime}>{o.time}</Text>
+                  </View>
+                  <View style={[s5.badge, { backgroundColor: c }]}>
+                    <Text style={s5.badgeText}>{o.count}/4</Text>
+                  </View>
                 </View>
-                <View style={[s5.badge, { backgroundColor: o.color }]}>
-                  <Text style={s5.badgeText}>{o.count}/4</Text>
+                <View style={s5.cardBottom}>
+                  <View style={s5.avatarsRow}>
+                    {PEOPLE.slice(0, o.count).map((p, j) => (
+                      <View key={p.name} style={[s5.avaSm, {
+                        backgroundColor: p.bg,
+                        marginLeft: j > 0 ? -6 : 0,
+                      }]}>
+                        <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {selected ? (
+                    <TouchableOpacity
+                      style={[s5.chooseBtn, { backgroundColor: c }]}
+                      onPress={() => setScreen('confirmado')}
+                    >
+                      <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={[s5.canText, { color: c }]}>{o.count}/4 disponibles</Text>
+                  )}
                 </View>
-              </View>
-              <View style={s5.cardBottom}>
-                <View style={s5.avatarsRow}>
-                  {PEOPLE.slice(0, o.count).map((p, j) => (
-                    <View key={p.name} style={[s5.avaSm, {
-                      backgroundColor: p.bg,
-                      marginLeft: j > 0 ? -6 : 0,
-                    }]}>
-                      <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
-                    </View>
-                  ))}
-                </View>
-                {o.first ? (
-                  <TouchableOpacity
-                    style={[s5.chooseBtn, { backgroundColor: o.color }]}
-                    onPress={() => setScreen('confirmado')}
-                  >
-                    <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={[s5.canText, { color: o.color }]}>{o.count}/4 pueden</Text>
-                )}
-              </View>
-            </View>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
     );
@@ -918,6 +948,21 @@ const s4 = StyleSheet.create({
   gridContainer: {
     flex: 1,
     paddingHorizontal: 18,
+  },
+  gridScoreRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 2,
+  },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  scoreRed: {
+    fontSize: 9,
+    textAlign: 'center',
+    color: '#EF4444',
   },
   gridHeader: {
     flexDirection: 'row',
