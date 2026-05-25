@@ -40,9 +40,12 @@ const CELL_LABELS: Record<number, string> = {
 };
 
 const OPTIONS = [
-  { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 3, color: '#10B981', bg: '#D1FAE5' },
-  { day: 'Jueves 16 ene', time: '8:00 – 10:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Viernes 17 ene', time: '8:00 – 10:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Jueves 16 ene', time: '7:00 – 9:00 PM · 2h', count: 3, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Jueves 16 ene', time: '9:00 – 11:00 AM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
   { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Miércoles 15 ene', time: '5:00 – 7:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
 const STATUS_TEXT: Record<string, string> = {
@@ -375,9 +378,9 @@ export default function HomeScreen() {
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
           {OPTIONS.map((o, i) => {
-            const isFirst = i === 0;
-            const c = isFirst ? '#10B981' : '#F59E0B';
-            const cl = isFirst ? '#D1FAE5' : '#FEF3C7';
+            const isGood = i < 3;
+            const c = isGood ? '#10B981' : '#F59E0B';
+            const cl = isGood ? '#D1FAE5' : '#FEF3C7';
             const selected = selectedOption === i;
             return (
               <TouchableOpacity
@@ -409,16 +412,14 @@ export default function HomeScreen() {
                       </View>
                     ))}
                   </View>
-                  {selected ? (
-                    <TouchableOpacity
-                      style={[s5.chooseBtn, { backgroundColor: c }]}
-                      onPress={() => setScreen('confirmado')}
-                    >
-                      <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={[s5.canText, { color: c }]}>{o.count}/4 disponibles</Text>
-                  )}
+                  <TouchableOpacity
+                    style={[s5.chooseBtn, { backgroundColor: c }]}
+                    onPress={() => { setSelectedOption(i); setScreen('confirmado'); }}
+                  >
+                    <Text style={s5.chooseBtnText}>
+                      {selected ? '✓ Elegido' : 'Elegir'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             );
