@@ -412,14 +412,16 @@ export default function HomeScreen() {
                       </View>
                     ))}
                   </View>
-                  <TouchableOpacity
-                    style={[s5.chooseBtn, { backgroundColor: c }]}
-                    onPress={() => { setSelectedOption(i); setScreen('confirmado'); }}
-                  >
-                    <Text style={s5.chooseBtnText}>
-                      {selected ? '✓ Elegido' : 'Elegir'}
-                    </Text>
-                  </TouchableOpacity>
+                  {selected ? (
+                    <TouchableOpacity
+                      style={[s5.chooseBtn, { backgroundColor: c }]}
+                      onPress={() => setScreen('confirmado')}
+                    >
+                      <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={[s5.canText, { color: c }]}>{o.count}/4 disponibles</Text>
+                  )}
                 </View>
               </TouchableOpacity>
             );
