@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const PEOPLE = [
@@ -202,9 +203,15 @@ export default function HomeScreen() {
             <Text style={s2.linkCardLabel}>Enlace de invitación</Text>
             <View style={s2.linkRow}>
               <Text style={s2.linkText} numberOfLines={1}>cuando.app/plan/abc123</Text>
-              <View style={s2.copyBtn}>
+              <TouchableOpacity
+                style={s2.copyBtn}
+                onPress={async () => {
+                  await Clipboard.setStringAsync('cuando.app/plan/abc123');
+                  Alert.alert('Copiado', 'Enlace copiado al portapapeles');
+                }}
+              >
                 <Text style={s2.copyBtnText}>Copiar</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
           <View style={s2.shareRow}>
