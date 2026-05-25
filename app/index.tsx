@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
@@ -42,8 +44,30 @@ const STATUS_TEXT: Record<string, string> = {
   invitado: 'invitado',
 };
 
+function TopNav({ title, onBack }: { title: string; onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[navStyle.wrap, { paddingTop: insets.top + 8 }]}>
+      <TouchableOpacity
+        onPress={onBack}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={navStyle.backBtn}
+      >
+        <Text style={navStyle.back}>{'←'}</Text>
+      </TouchableOpacity>
+      <Text style={navStyle.title}>{title}</Text>
+      <View style={{ width: 38 }} />
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const [screen, setScreen] = useState('inicio');
+  const [planName, setPlanName] = useState('Cena de cumpleaños 🎂');
+  const [fromDate, setFromDate] = useState(new Date(2026, 0, 13));
+  const [toDate, setToDate] = useState(new Date(2026, 0, 19));
+  const [durationIdx, setDurationIdx] = useState(1);
+  const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   if (screen === 'inicio') {
     return (
@@ -71,49 +95,82 @@ export default function HomeScreen() {
   }
 
   if (screen === 'crear') {
+    const formatDate = (d: Date) => {
+      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+    };
+
+    const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
+      if (showDatePicker === 'from' && selected) setFromDate(selected);
+      if (showDatePicker === 'to' && selected) setToDate(selected);
+      if (Platform.OS === 'android') setShowDatePicker(null);
+    };
+
+    const durOptions = ['1h', '2h', '3h', 'Todo el día'];
+
     return (
       <View style={s1.wrap}>
         <StatusBar style="dark" />
-        <View style={navStyle.wrap}>
-          <TouchableOpacity onPress={() => setScreen('inicio')}>
-            <Text style={navStyle.back}>←</Text>
-          </TouchableOpacity>
-          <Text style={navStyle.title}>Nuevo plan</Text>
-          <View style={{ width: 30 }} />
-        </View>
-        <ScrollView style={s1.body}>
+        <TopNav title="Nuevo plan" onBack={() => setScreen('inicio')} />
+        <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent}>
           <Text style={s1.sectionLabel}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
           <Text style={s1.sectionLabel}>Nombre del plan</Text>
-          <View style={s1.inputActive}>
-            <Text style={s1.inputText}>Cena de cumpleaños 🎂</Text>
-          </View>
+          <TextInput
+            style={s1.inputActive}
+            value={planName}
+            onChangeText={setPlanName}
+            placeholder="Ej: Cena de cumpleaños"
+            placeholderTextColor="#9CA3AF"
+          />
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
-            <View style={s1.dateBox}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => setShowDatePicker('from')}>
               <Text style={s1.dateLbl}>Desde</Text>
-              <Text style={s1.dateVal}>Lun 13 ene</Text>
-            </View>
-            <View style={s1.dateBox}>
+              <Text style={s1.dateVal}>{formatDate(fromDate)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s1.dateBox} onPress={() => setShowDatePicker('to')}>
               <Text style={s1.dateLbl}>Hasta</Text>
-              <Text style={s1.dateVal}>Dom 19 ene</Text>
-            </View>
+              <Text style={s1.dateVal}>{formatDate(toDate)}</Text>
+            </TouchableOpacity>
           </View>
           <Text style={s1.sectionLabel}>Duración</Text>
           <View style={s1.durRow}>
-            {['1h', '2h', '3h'].map((d) => (
-              <View key={d} style={[s1.durOpt, d === '2h' && s1.durOptSel]}>
-                <Text style={[s1.durOptText, d === '2h' && s1.durOptTextSel]}>{d}</Text>
-              </View>
+            {durOptions.map((d, i) => (
+              <TouchableOpacity
+                key={d}
+                style={[s1.durOpt, durationIdx === i && s1.durOptSel]}
+                onPress={() => setDurationIdx(i)}
+              >
+                <Text style={[s1.durOptText, durationIdx === i && s1.durOptTextSel]}>
+                  {d}
+                </Text>
+              </TouchableOpacity>
             ))}
-            <View style={s1.durOpt}>
-              <Text style={s1.durOptText}>Todo el día</Text>
-            </View>
           </View>
+        </ScrollView>
+        {showDatePicker && (
+          <DateTimePicker
+            value={showDatePicker === 'from' ? fromDate : toDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            onChange={onDateChange}
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={s1.pickerDone}
+            onPress={() => setShowDatePicker(null)}
+          >
+            <Text style={s1.pickerDoneText}>Listo</Text>
+          </TouchableOpacity>
+        )}
+        <View style={s1.bottom}>
           <TouchableOpacity style={s1.nextBtn} onPress={() => setScreen('invitar')}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
     );
   }
@@ -122,14 +179,8 @@ export default function HomeScreen() {
     return (
       <View style={s2.wrap}>
         <StatusBar style="dark" />
-        <View style={navStyle.wrap}>
-          <TouchableOpacity onPress={() => setScreen('crear')}>
-            <Text style={navStyle.back}>←</Text>
-          </TouchableOpacity>
-          <Text style={navStyle.title}>Invitar</Text>
-          <View style={{ width: 30 }} />
-        </View>
-        <ScrollView style={s2.body}>
+        <TopNav title="Invitar" onBack={() => setScreen('crear')} />
+        <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent}>
           <Text style={s2.heading}>Invita a tu grupo 👥</Text>
           <View style={s2.linkCard}>
             <Text style={s2.linkCardLabel}>Enlace de invitación</Text>
@@ -166,10 +217,12 @@ export default function HomeScreen() {
               </Text>
             </View>
           ))}
+        </ScrollView>
+        <View style={s2.bottom}>
           <TouchableOpacity style={s2.nextBtn} onPress={() => setScreen('conectar')}>
             <Text style={s2.nextBtnText}>Ya están todos →</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
     );
   }
@@ -178,14 +231,8 @@ export default function HomeScreen() {
     return (
       <View style={s3.wrap}>
         <StatusBar style="dark" />
-        <View style={navStyle.wrap}>
-          <TouchableOpacity onPress={() => setScreen('invitar')}>
-            <Text style={navStyle.back}>←</Text>
-          </TouchableOpacity>
-          <Text style={navStyle.title}>Conectar</Text>
-          <View style={{ width: 30 }} />
-        </View>
-        <View style={s3.body}>
+        <TopNav title="Conectar" onBack={() => setScreen('invitar')} />
+        <View style={s3.bodyTop}>
           <View style={s3.calIcon}>
             <Text style={{ fontSize: 44 }}>📅</Text>
           </View>
@@ -208,15 +255,15 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
-          <View style={s3.bottomBtns}>
-            <TouchableOpacity style={s3.googleBtn} onPress={() => setScreen('heatmap')}>
-              <Text style={s3.googleG}>G</Text>
-              <Text style={s3.googleText}> Conectar con Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s3.manualBtn}>
-              <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
-            </TouchableOpacity>
-          </View>
+        </View>
+        <View style={s3.bottomBtns}>
+          <TouchableOpacity style={s3.googleBtn} onPress={() => setScreen('heatmap')}>
+            <Text style={s3.googleG}>G</Text>
+            <Text style={s3.googleText}> Conectar con Google</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s3.manualBtn}>
+            <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -226,13 +273,7 @@ export default function HomeScreen() {
     return (
       <View style={s4.wrap}>
         <StatusBar style="dark" />
-        <View style={navStyle.wrap}>
-          <TouchableOpacity onPress={() => setScreen('conectar')}>
-            <Text style={navStyle.back}>←</Text>
-          </TouchableOpacity>
-          <Text style={navStyle.title}>Disponibilidad</Text>
-          <View style={{ width: 30 }} />
-        </View>
+        <TopNav title="Disponibilidad" onBack={() => setScreen('conectar')} />
         <View style={s4.header}>
           <View>
             <Text style={s4.heatTitle}>Disponibilidad</Text>
@@ -297,14 +338,8 @@ export default function HomeScreen() {
     return (
       <View style={s5.wrap}>
         <StatusBar style="dark" />
-        <View style={navStyle.wrap}>
-          <TouchableOpacity onPress={() => setScreen('heatmap')}>
-            <Text style={navStyle.back}>←</Text>
-          </TouchableOpacity>
-          <Text style={navStyle.title}>Mejores horarios</Text>
-          <View style={{ width: 30 }} />
-        </View>
-        <ScrollView style={s5.body}>
+        <TopNav title="Mejores horarios" onBack={() => setScreen('heatmap')} />
+        <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
           {OPTIONS.map((o, i) => (
@@ -350,13 +385,7 @@ export default function HomeScreen() {
   return (
     <View style={s6.wrap}>
       <StatusBar style="dark" />
-      <View style={navStyle.wrap}>
-        <TouchableOpacity onPress={() => setScreen('mejores')}>
-          <Text style={navStyle.back}>←</Text>
-        </TouchableOpacity>
-        <Text style={navStyle.title}>Confirmado</Text>
-        <View style={{ width: 30 }} />
-      </View>
+        <TopNav title="Confirmado" onBack={() => setScreen('mejores')} />
       <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
         <View style={s6.successIcon}>
           <Text style={{ fontSize: 34 }}>✅</Text>
@@ -389,13 +418,15 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+      </ScrollView>
+      <View style={s6.bottom}>
         <TouchableOpacity style={s6.gcalBtn}>
           <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s6.shareBtn}>
           <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -405,14 +436,20 @@ const navStyle = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E7EB',
   },
+  backBtn: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   back: {
-    fontSize: 15,
+    fontSize: 18,
     color: '#5B4FDB',
     fontWeight: '600',
   },
@@ -464,7 +501,7 @@ const s0 = StyleSheet.create({
   },
   buttons: {
     paddingHorizontal: 28,
-    paddingBottom: 28,
+    paddingBottom: 40,
     gap: 10,
   },
   primaryBtn: {
@@ -499,7 +536,10 @@ const s1 = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  bodyContent: {
     padding: 20,
+    flexGrow: 1,
   },
   sectionLabel: {
     fontSize: 11,
@@ -523,8 +563,6 @@ const s1 = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     paddingHorizontal: 16,
-  },
-  inputText: {
     fontSize: 15,
     color: '#111827',
     fontWeight: '500',
@@ -577,16 +615,32 @@ const s1 = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  bottom: {
+    padding: 20,
+    paddingBottom: 32,
+  },
   nextBtn: {
     backgroundColor: '#5B4FDB',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 24,
   },
   nextBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  pickerDone: {
+    backgroundColor: '#5B4FDB',
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  pickerDoneText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });
@@ -598,7 +652,10 @@ const s2 = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  bodyContent: {
     padding: 20,
+    flexGrow: 1,
   },
   heading: {
     fontSize: 21,
@@ -703,12 +760,15 @@ const s2 = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  bottom: {
+    padding: 20,
+    paddingBottom: 32,
+  },
   nextBtn: {
     backgroundColor: '#5B4FDB',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 16,
   },
   nextBtnText: {
     color: '#fff',
@@ -722,10 +782,10 @@ const s3 = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  body: {
+  bodyTop: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingTop: 10,
     alignItems: 'center',
   },
   calIcon: {
@@ -773,8 +833,8 @@ const s3 = StyleSheet.create({
   },
   bottomBtns: {
     width: '100%',
-    marginTop: 'auto',
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   googleBtn: {
     flexDirection: 'row',
@@ -852,6 +912,7 @@ const s4 = StyleSheet.create({
     fontWeight: '700',
   },
   gridContainer: {
+    flex: 1,
     paddingHorizontal: 14,
   },
   gridHeader: {
@@ -870,9 +931,11 @@ const s4 = StyleSheet.create({
     color: '#6B7280',
   },
   heatGrid: {
+    flex: 1,
     gap: 3,
   },
   heatRow: {
+    flex: 1,
     flexDirection: 'row',
     gap: 3,
   },
@@ -888,7 +951,6 @@ const s4 = StyleSheet.create({
   },
   heatCell: {
     flex: 1,
-    minHeight: 22,
     borderRadius: 4,
   },
   legend: {
@@ -933,7 +995,10 @@ const s5 = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  bodyContent: {
     padding: 18,
+    flexGrow: 1,
   },
   title: {
     fontSize: 21,
@@ -1025,6 +1090,7 @@ const s6 = StyleSheet.create({
   bodyContent: {
     alignItems: 'center',
     padding: 20,
+    flexGrow: 1,
   },
   successIcon: {
     width: 68,
@@ -1125,13 +1191,17 @@ const s6 = StyleSheet.create({
     fontSize: 10,
     color: '#6B7280',
   },
+  bottom: {
+    padding: 20,
+    paddingBottom: 32,
+    gap: 10,
+  },
   gcalBtn: {
     backgroundColor: '#5B4FDB',
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
     width: '100%',
-    marginBottom: 9,
   },
   gcalBtnText: {
     color: '#fff',
