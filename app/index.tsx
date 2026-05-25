@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const PEOPLE = [
@@ -29,7 +30,13 @@ const HEATMAP = [
 const CELL_COLORS: Record<number, string> = {
   0: '#10B981',
   1: '#F59E0B',
-  2: '#EF4444',
+  2: '#E5E7EB',
+};
+
+const CELL_LABELS: Record<number, string> = {
+  0: '4/4',
+  1: '2/4',
+  2: '0/4',
 };
 
 const OPTIONS = [
@@ -72,7 +79,12 @@ export default function HomeScreen() {
 
   if (screen === 'inicio') {
     return (
-      <View style={s0.wrap}>
+      <LinearGradient
+        colors={['#3730A3', '#7C3AED', '#9D174D']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s0.wrap}
+      >
         <StatusBar style="light" />
         <View style={s0.center}>
           <View style={s0.logo}>
@@ -91,7 +103,7 @@ export default function HomeScreen() {
             <Text style={s0.ghostBtnText}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -296,13 +308,11 @@ export default function HomeScreen() {
             <View style={{ width: 28 }} />
             {DAYS.map((_, ci) => {
               const green = HEATMAP.filter(r => r[ci] === 0).length;
-              const red = HEATMAP.filter(r => r[ci] === 2).length;
               return (
                 <View key={ci} style={s4.dayCell}>
-                  <Text style={[s4.scoreText, { color: green >= 4 ? '#10B981' : '#F59E0B' }]}>
+                  <Text style={[s4.scoreText, { color: green >= 5 ? '#10B981' : '#F59E0B' }]}>
                     {green}/8
                   </Text>
-                  {red > 0 && <Text style={s4.scoreRed}>{red}🔴</Text>}
                 </View>
               );
             })}
@@ -325,7 +335,13 @@ export default function HomeScreen() {
                   <View
                     key={ci}
                     style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
-                  />
+                  >
+                    <Text style={[s4.cellLabel, {
+                      color: v === 0 ? '#065F46' : v === 1 ? '#92400E' : '#9CA3AF',
+                    }]}>
+                      {CELL_LABELS[v]}
+                    </Text>
+                  </View>
                 ))}
               </View>
             ))}
@@ -335,7 +351,7 @@ export default function HomeScreen() {
           {[
             { color: '#10B981', label: 'Todos libres' },
             { color: '#F59E0B', label: 'Algunos' },
-            { color: '#EF4444', label: 'Nadie' },
+            { color: '#E5E7EB', label: 'Nadie' },
           ].map((l) => (
             <View key={l.label} style={s4.legendItem}>
               <View style={[s4.legendDot, { backgroundColor: l.color }]} />
@@ -493,7 +509,6 @@ const navStyle = StyleSheet.create({
 const s0 = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: '#5B4FDB',
     justifyContent: 'space-between',
   },
   center: {
@@ -959,11 +974,7 @@ const s4 = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  scoreRed: {
-    fontSize: 9,
-    textAlign: 'center',
-    color: '#EF4444',
-  },
+
   gridHeader: {
     flexDirection: 'row',
     gap: 4,
@@ -1002,6 +1013,12 @@ const s4 = StyleSheet.create({
   heatCell: {
     flex: 1,
     borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellLabel: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   legend: {
     flexDirection: 'row',
