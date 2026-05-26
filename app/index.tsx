@@ -80,6 +80,28 @@ export default function HomeScreen() {
   const [durationIdx, setDurationIdx] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{ dayIdx: number; hourIdx: number } | null>(null);
+  const [confirmedDay, setConfirmedDay] = useState('');
+  const [confirmedTime, setConfirmedTime] = useState('');
+
+  const durOptions = ['1h', '2h', '3h', 'Todo el día'];
+
+  function formatCellDay(dayIdx: number): string {
+    const date = new Date(fromDate);
+    date.setDate(date.getDate() + dayIdx);
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  }
+
+  function formatCellTime(hourIdx: number): string {
+    const start = parseInt(HOURS[hourIdx]);
+    const dur = parseInt(durOptions[durationIdx]) || 2;
+    const end = start + dur;
+    const ampm = (h: number) => (h >= 12 ? 'PM' : 'AM');
+    const h12 = (h: number) => (h > 12 ? h - 12 : h === 0 ? 12 : h);
+    return `${h12(start)}:00 ${ampm(start)} – ${h12(end)}:00 ${ampm(end)} · ${durOptions[durationIdx]}`;
+  }
 
   if (screen === 'inicio') {
     return (
@@ -123,8 +145,6 @@ export default function HomeScreen() {
       if (showDatePicker === 'to' && selected) setToDate(selected);
       if (Platform.OS === 'android') setShowDatePicker(null);
     };
-
-    const durOptions = ['1h', '2h', '3h', 'Todo el día'];
 
     return (
       <View style={s1.wrap}>
@@ -341,18 +361,26 @@ export default function HomeScreen() {
                 <View style={s4.hourCell}>
                   <Text style={s4.hourLabel}>{HOURS[ri]}</Text>
                 </View>
-                {row.map((v, ci) => (
-                  <View
-                    key={ci}
-                    style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
-                  >
-                    <Text style={[s4.cellLabel, {
-                      color: v === 0 ? '#065F46' : v === 1 ? '#92400E' : '#9CA3AF',
-                    }]}>
-                      {CELL_LABELS[v]}
-                    </Text>
-                  </View>
-                ))}
+                {row.map((v, ci) => {
+                  const isSel = selectedCell?.dayIdx === ci && selectedCell?.hourIdx === ri;
+                  return (
+                    <TouchableOpacity
+                      key={ci}
+                      style={[s4.heatCell, {
+                        backgroundColor: CELL_COLORS[v],
+                        borderWidth: isSel ? 2.5 : 0,
+                        borderColor: isSel ? '#5B4FDB' : 'transparent',
+                      }]}
+                      onPress={() => setSelectedCell(isSel ? null : { dayIdx: ci, hourIdx: ri })}
+                    >
+                      <Text style={[s4.cellLabel, {
+                        color: v === 0 ? '#065F46' : v === 1 ? '#92400E' : '#9CA3AF',
+                      }]}>
+                        {CELL_LABELS[v]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -369,6 +397,19 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
+        {selectedCell && (
+          <TouchableOpacity
+            style={s4.actionBtn}
+            onPress={() => {
+              setConfirmedDay(formatCellDay(selectedCell.dayIdx));
+              setConfirmedTime(formatCellTime(selectedCell.hourIdx));
+              setSelectedCell(null);
+              setScreen('confirmado');
+            }}
+          >
+            <Text style={s4.actionBtnText}>Elegir este horario ✓</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
           <Text style={s4.actionBtnText}>Ver mejores horarios ✨</Text>
         </TouchableOpacity>
@@ -391,7 +432,7 @@ export default function HomeScreen() {
             const selected = selectedOption === i;
             return (
               <TouchableOpacity
-                key={o.day}
+                key={`${o.day}-${i}`}
                 style={[s5.card, {
                   backgroundColor: cl,
                   borderColor: selected ? c : c + '30',
@@ -422,7 +463,11 @@ export default function HomeScreen() {
                   {selected ? (
                     <TouchableOpacity
                       style={[s5.chooseBtn, { backgroundColor: c }]}
-                      onPress={() => setScreen('confirmado')}
+                      onPress={() => {
+                        setConfirmedDay(o.day);
+                        setConfirmedTime(o.time);
+                        setScreen('confirmado');
+                      }}
                     >
                       <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
                     </TouchableOpacity>
@@ -441,7 +486,7 @@ export default function HomeScreen() {
   return (
     <View style={s6.wrap}>
       <StatusBar style="dark" />
-        <TopNav title="Confirmado" onBack={() => setScreen('mejores')} />
+        <TopNav title="Confirmado" onBack={() => setScreen('heatmap')} />
       <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
         <View style={s6.successIcon}>
           <Text style={{ fontSize: 34 }}>✅</Text>
@@ -456,8 +501,8 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 18 }}>📅</Text>
             </View>
             <View>
-              <Text style={s6.dateVal}>Miércoles 15 de enero</Text>
-              <Text style={s6.timeVal}>7:00 PM – 9:00 PM · 2 horas</Text>
+              <Text style={s6.dateVal}>{confirmedDay || (selectedOption != null ? OPTIONS[selectedOption].day : 'Miércoles 15 de enero')}</Text>
+              <Text style={s6.timeVal}>{confirmedTime || (selectedOption != null ? OPTIONS[selectedOption].time : '7:00 PM – 9:00 PM · 2 horas')}</Text>
             </View>
           </View>
           <Text style={s6.attendLbl}>Asistentes</Text>
