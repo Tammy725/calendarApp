@@ -2,10 +2,12 @@ import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { roomsApi } from '@/lib/api/rooms';
 
 export default function JoinScreen() {
+  const insets = useSafeAreaInsets();
   const [code, setCode] = useState('');
   const [joining, setJoining] = useState(false);
 
@@ -33,6 +35,9 @@ export default function JoinScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={[styles.backBtn, { top: insets.top + 8 }]} onPress={() => router.back()}>
+        <Text style={styles.backText}>←</Text>
+      </TouchableOpacity>
       <View style={styles.content}>
         <Text style={styles.title}>Unirse a un Plan</Text>
         <Text style={styles.subtitle}>Ingresa el código que te compartieron</Text>
@@ -56,6 +61,11 @@ export default function JoinScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', justifyContent: 'center' },
+  backBtn: {
+    position: 'absolute', top: 60, left: 16, zIndex: 10,
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+  },
+  backText: { fontSize: 28, color: '#5B4FDB', fontWeight: '600' },
   content: { padding: 24, gap: 16, alignItems: 'center' },
   title: { fontSize: 28, fontWeight: '700', color: '#11181C' },
   subtitle: { fontSize: 16, color: '#687076', textAlign: 'center' },
@@ -65,7 +75,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   joinButton: {
-    width: '100%', backgroundColor: '#0a7ea4', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10,
+    width: '100%', backgroundColor: '#5B4FDB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10,
   },
   joinText: { color: '#fff', fontSize: 17, fontWeight: '600' },
 });

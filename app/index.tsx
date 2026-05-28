@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { router } from 'expo-router';
 
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
@@ -14,7 +15,7 @@ const PEOPLE = [
   { initial: 'D', name: 'Diego', color: '#9CA3AF', bg: '#F3F4F6' },
 ];
 
-const DAYS = ['L', 'M', 'X', 'J', 'V'];
+const DAYS = ['L', 'M', 'M', 'J', 'V'];
 const HOURS = ['9h', '10h', '11h', '12h', '13h', '14h', '15h', '16h'];
 
 const HEATMAP = [
@@ -74,21 +75,26 @@ function TopNav({ title, onBack }: { title: string; onBack: () => void }) {
 
 export default function HomeScreen() {
   const [screen, setScreen] = useState('inicio');
-  const [planName, setPlanName] = useState('Cena de cumpleaños 🎂');
-  const [fromDate, setFromDate] = useState(new Date(2026, 0, 13));
-  const [toDate, setToDate] = useState(new Date(2026, 0, 19));
+  const [planName, setPlanName] = useState('');
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
+  const [tempDate, setTempDate] = useState(new Date());
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [selectedCell, setSelectedCell] = useState<{ dayIdx: number; hourIdx: number } | null>(null);
   const [confirmedDay, setConfirmedDay] = useState('');
   const [confirmedTime, setConfirmedTime] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalDay, setModalDay] = useState('');
+  const [modalTime, setModalTime] = useState('');
 
   const durOptions = ['1h', '2h', '3h', 'Todo el día'];
 
   function formatCellDay(dayIdx: number): string {
-    const date = new Date(fromDate);
-    date.setDate(date.getDate() + dayIdx);
+    const date = new Date(fromDate ?? new Date());
+    const dayOfWeek = date.getDay();
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    date.setDate(date.getDate() - diffToMonday + dayIdx);
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
@@ -103,8 +109,9 @@ export default function HomeScreen() {
     return `${h12(start)}:00 ${ampm(start)} – ${h12(end)}:00 ${ampm(end)} · ${durOptions[durationIdx]}`;
   }
 
+  let content;
   if (screen === 'inicio') {
-    return (
+    content = (
       <LinearGradient
         colors={['#3730A3', '#7C3AED', '#9D174D']}
         start={{ x: 0, y: 0 }}
@@ -122,10 +129,10 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={s0.primaryBtn} onPress={() => setScreen('crear')}>
+          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('crear'); }}>
             <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s0.ghostBtn}>
+          <TouchableOpacity style={s0.ghostBtn} onPress={() => router.push('/join')}>
             <Text style={s0.ghostBtnText}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
@@ -141,15 +148,19 @@ export default function HomeScreen() {
     };
 
     const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
-      if (showDatePicker === 'from' && selected) setFromDate(selected);
-      if (showDatePicker === 'to' && selected) setToDate(selected);
-      if (Platform.OS === 'android') setShowDatePicker(null);
+      if (!selected) return;
+      setTempDate(selected);
+      if (Platform.OS === 'android') {
+        if (showDatePicker === 'from') setFromDate(selected);
+        if (showDatePicker === 'to') setToDate(selected);
+        setShowDatePicker(null);
+      }
     };
 
-    return (
+    content = (
       <View style={s1.wrap}>
         <StatusBar style="dark" />
-        <TopNav title="Nuevo plan" onBack={() => setScreen('inicio')} />
+        <TopNav title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
         <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent}>
           <Text style={s1.sectionLabel}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
@@ -157,19 +168,19 @@ export default function HomeScreen() {
           <TextInput
             style={s1.inputActive}
             value={planName}
-            onChangeText={setPlanName}
-            placeholder="Ej: Cena de cumpleaños"
+            onChangeText={(t) => setPlanName(t.toUpperCase())}
+            placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
             placeholderTextColor="#9CA3AF"
           />
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
-            <TouchableOpacity style={s1.dateBox} onPress={() => setShowDatePicker('from')}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(fromDate ?? new Date()); setShowDatePicker('from'); }}>
               <Text style={s1.dateLbl}>Desde</Text>
-              <Text style={s1.dateVal}>{formatDate(fromDate)}</Text>
+              <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s1.dateBox} onPress={() => setShowDatePicker('to')}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(toDate ?? new Date()); setShowDatePicker('to'); }}>
               <Text style={s1.dateLbl}>Hasta</Text>
-              <Text style={s1.dateVal}>{formatDate(toDate)}</Text>
+              <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
           </View>
           <Text style={s1.sectionLabel}>Duración</Text>
@@ -188,23 +199,41 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
         {showDatePicker && (
-          <DateTimePicker
-            value={showDatePicker === 'from' ? fromDate : toDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={onDateChange}
-          />
+          <View style={{ alignItems: 'center' }}>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={onDateChange}
+              minimumDate={showDatePicker === 'to' && fromDate ? fromDate : undefined}
+              maximumDate={showDatePicker === 'from' && toDate ? toDate : undefined}
+            />
+          </View>
         )}
         {showDatePicker && Platform.OS === 'ios' && (
           <TouchableOpacity
             style={s1.pickerDone}
-            onPress={() => setShowDatePicker(null)}
+            onPress={() => {
+              if (showDatePicker === 'from') setFromDate(tempDate);
+              if (showDatePicker === 'to') setToDate(tempDate);
+              setShowDatePicker(null);
+            }}
           >
             <Text style={s1.pickerDoneText}>Listo</Text>
           </TouchableOpacity>
         )}
         <View style={s1.bottom}>
-          <TouchableOpacity style={s1.nextBtn} onPress={() => setScreen('invitar')}>
+          <TouchableOpacity style={s1.nextBtn} onPress={() => {
+            if (!planName.trim()) {
+              Alert.alert('Nombre del plan', 'Escribe un nombre para el plan');
+              return;
+            }
+            if (!fromDate || !toDate) {
+              Alert.alert('Fechas requeridas', 'Selecciona las fechas de inicio y fin');
+              return;
+            }
+            setScreen('invitar');
+          }}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
         </View>
@@ -213,7 +242,7 @@ export default function HomeScreen() {
   }
 
   if (screen === 'invitar') {
-    return (
+    content = (
       <View style={s2.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Invitar" onBack={() => setScreen('crear')} />
@@ -271,7 +300,7 @@ export default function HomeScreen() {
   }
 
   if (screen === 'conectar') {
-    return (
+    content = (
       <View style={s3.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Conectar" onBack={() => setScreen('invitar')} />
@@ -313,7 +342,7 @@ export default function HomeScreen() {
   }
 
   if (screen === 'heatmap') {
-    return (
+    content = (
       <View style={s4.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Disponibilidad" onBack={() => setScreen('conectar')} />
@@ -349,8 +378,8 @@ export default function HomeScreen() {
           </View>
           <View style={s4.gridHeader}>
             <View style={{ width: 28 }} />
-            {DAYS.map((d) => (
-              <View key={d} style={s4.dayCell}>
+            {DAYS.map((d, i) => (
+              <View key={i} style={s4.dayCell}>
                 <Text style={s4.dayLabel}>{d}</Text>
               </View>
             ))}
@@ -362,16 +391,17 @@ export default function HomeScreen() {
                   <Text style={s4.hourLabel}>{HOURS[ri]}</Text>
                 </View>
                 {row.map((v, ci) => {
-                  const isSel = selectedCell?.dayIdx === ci && selectedCell?.hourIdx === ri;
                   return (
                     <TouchableOpacity
                       key={ci}
                       style={[s4.heatCell, {
                         backgroundColor: CELL_COLORS[v],
-                        borderWidth: isSel ? 2.5 : 0,
-                        borderColor: isSel ? '#5B4FDB' : 'transparent',
                       }]}
-                      onPress={() => setSelectedCell(isSel ? null : { dayIdx: ci, hourIdx: ri })}
+                      onPress={() => {
+                        setModalDay(formatCellDay(ci));
+                        setModalTime(formatCellTime(ri));
+                        setShowModal(true);
+                      }}
                     >
                       <Text style={[s4.cellLabel, {
                         color: v === 0 ? '#065F46' : v === 1 ? '#92400E' : '#9CA3AF',
@@ -397,28 +427,15 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
-        {selectedCell && (
-          <TouchableOpacity
-            style={s4.actionBtn}
-            onPress={() => {
-              setConfirmedDay(formatCellDay(selectedCell.dayIdx));
-              setConfirmedTime(formatCellTime(selectedCell.hourIdx));
-              setSelectedCell(null);
-              setScreen('confirmado');
-            }}
-          >
-            <Text style={s4.actionBtnText}>Elegir este horario ✓</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
-          <Text style={s4.actionBtnText}>Ver mejores horarios ✨</Text>
+          <Text style={s4.actionBtnText}>Horarios recomendados ✨</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   if (screen === 'mejores') {
-    return (
+    content = (
       <View style={s5.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Mejores horarios" onBack={() => setScreen('heatmap')} />
@@ -464,9 +481,9 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       style={[s5.chooseBtn, { backgroundColor: c }]}
                       onPress={() => {
-                        setConfirmedDay(o.day);
-                        setConfirmedTime(o.time);
-                        setScreen('confirmado');
+                        setModalDay(o.day);
+                        setModalTime(o.time);
+                        setShowModal(true);
                       }}
                     >
                       <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
@@ -483,52 +500,96 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <View style={s6.wrap}>
-      <StatusBar style="dark" />
-        <TopNav title="Confirmado" onBack={() => setScreen('heatmap')} />
-      <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
-        <View style={s6.successIcon}>
-          <Text style={{ fontSize: 34 }}>✅</Text>
-        </View>
-        <Text style={s6.title}>¡Plan confirmado!</Text>
-        <Text style={s6.subtitle}>Ya saben cuándo se van a ver</Text>
-        <View style={s6.confirmCard}>
-          <Text style={s6.cardLbl}>Plan</Text>
-          <Text style={s6.cardName}>Cena de cumpleaños 🎂</Text>
-          <View style={s6.dateRow}>
-            <View style={s6.dateIcon}>
-              <Text style={{ fontSize: 18 }}>📅</Text>
-            </View>
-            <View>
-              <Text style={s6.dateVal}>{confirmedDay || (selectedOption != null ? OPTIONS[selectedOption].day : 'Miércoles 15 de enero')}</Text>
-              <Text style={s6.timeVal}>{confirmedTime || (selectedOption != null ? OPTIONS[selectedOption].time : '7:00 PM – 9:00 PM · 2 horas')}</Text>
-            </View>
+  if (screen === 'confirmado') {
+    content = (
+      <View style={s6.wrap}>
+        <StatusBar style="dark" />
+          <TopNav title="Confirmado" onBack={() => setScreen('heatmap')} />
+        <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
+          <View style={s6.successIcon}>
+            <Text style={{ fontSize: 34 }}>✅</Text>
           </View>
-          <Text style={s6.attendLbl}>Asistentes</Text>
-          <View style={s6.attendRow}>
-            {PEOPLE.slice(0, 4).map((p) => (
-              <View key={p.name} style={s6.attendPerson}>
-                <View style={[s6.attendAva, { backgroundColor: p.bg }]}>
-                  <Text style={[s6.attendAvaText, { color: p.color }]}>{p.initial}</Text>
-                </View>
-                <Text style={s6.attendName}>
-                  {p.name === 'Tú' ? 'Ana' : p.name}
-                </Text>
+          <Text style={s6.title}>¡Plan confirmado!</Text>
+          <Text style={s6.subtitle}>Ya saben cuándo se van a ver</Text>
+          <View style={s6.confirmCard}>
+            <Text style={s6.cardLbl}>Plan</Text>
+            <Text style={s6.cardName}>{planName}</Text>
+            <View style={s6.dateRow}>
+              <View style={s6.dateIcon}>
+                <Text style={{ fontSize: 18 }}>📅</Text>
               </View>
-            ))}
+              <View>
+                <Text style={s6.dateVal}>{confirmedDay || (selectedOption != null ? OPTIONS[selectedOption].day : 'Miércoles 15 de enero')}</Text>
+                <Text style={s6.timeVal}>{confirmedTime || (selectedOption != null ? OPTIONS[selectedOption].time : '7:00 PM – 9:00 PM · 2 horas')}</Text>
+              </View>
+            </View>
+            <Text style={s6.attendLbl}>Asistentes</Text>
+            <View style={s6.attendRow}>
+              {PEOPLE.slice(0, 4).map((p) => (
+                <View key={p.name} style={s6.attendPerson}>
+                  <View style={[s6.attendAva, { backgroundColor: p.bg }]}>
+                    <Text style={[s6.attendAvaText, { color: p.color }]}>{p.initial}</Text>
+                  </View>
+                  <Text style={s6.attendName}>
+                    {p.name === 'Tú' ? 'Ana' : p.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+        <View style={s6.bottom}>
+          <TouchableOpacity style={s6.gcalBtn}>
+            <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s6.shareBtn}>
+            <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      {content}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View style={modalStyle.overlay}>
+          <View style={modalStyle.card}>
+            <Text style={modalStyle.title}>¿Confirmar fecha?</Text>
+            <Text style={modalStyle.subtitle}>¿Quieres seleccionar esta fecha?</Text>
+            <View style={modalStyle.dateContainer}>
+              <Text style={modalStyle.dateDay}>{modalDay}</Text>
+              <Text style={modalStyle.dateTime}>{modalTime}</Text>
+            </View>
+            <View style={modalStyle.btnRow}>
+              <TouchableOpacity
+                style={modalStyle.cancelBtn}
+                onPress={() => setShowModal(false)}
+              >
+                <Text style={modalStyle.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={modalStyle.confirmBtn}
+                onPress={() => {
+                  setConfirmedDay(modalDay);
+                  setConfirmedTime(modalTime);
+                  setShowModal(false);
+                  setScreen('confirmado');
+                }}
+              >
+                <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ScrollView>
-      <View style={s6.bottom}>
-        <TouchableOpacity style={s6.gcalBtn}>
-          <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s6.shareBtn}>
-          <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </Modal>
+    </>
   );
 }
 
@@ -664,9 +725,11 @@ const s1 = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     paddingHorizontal: 18,
-    fontSize: 18,
+    fontSize: 15,
     color: '#111827',
     fontWeight: '600',
+    fontFamily: 'Arial',
+    letterSpacing: 0,
   },
   dateRow: {
     flexDirection: 'row',
@@ -1341,9 +1404,88 @@ const s6 = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  shareBtnText: {
-    color: '#10B981',
+   shareBtnText: {
+     color: '#10B981',
+     fontSize: 16,
+     fontWeight: '700',
+   },
+ });
+
+const modalStyle = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 28,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  dateContainer: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dateDay: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  dateTime: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  confirmBtn: {
+    flex: 1,
+    backgroundColor: '#5B4FDB',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  confirmBtnText: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#fff',
   },
 });
