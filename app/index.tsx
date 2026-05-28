@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -82,6 +82,7 @@ export default function HomeScreen() {
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
+  const pickerValueRef = useRef(new Date());
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [confirmedDay, setConfirmedDay] = useState('');
   const [confirmedTime, setConfirmedTime] = useState('');
@@ -161,7 +162,7 @@ export default function HomeScreen() {
         setShowAndroidPicker(false);
       }
       if (!selected) return;
-      setTempDate(selected);
+      pickerValueRef.current = selected;
       if (Platform.OS === 'android') {
         if (showDatePicker === 'from') setFromDate(selected);
         if (showDatePicker === 'to') setToDate(selected);
@@ -188,7 +189,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={s1.dateBox} onPress={() => {
               let d = fromDate ?? new Date();
               if (toDate && d > toDate) d = toDate;
-              setTempDate(d); setShowDatePicker('from'); if (Platform.OS === 'android') setShowAndroidPicker(true);
+              pickerValueRef.current = d; setTempDate(d); setShowDatePicker('from'); if (Platform.OS === 'android') setShowAndroidPicker(true);
             }}>
               <Text style={s1.dateLbl}>Desde</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
@@ -196,7 +197,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={s1.dateBox} onPress={() => {
               let d = toDate ?? new Date();
               if (fromDate && d < fromDate) d = fromDate;
-              setTempDate(d); setShowDatePicker('to'); if (Platform.OS === 'android') setShowAndroidPicker(true);
+              pickerValueRef.current = d; setTempDate(d); setShowDatePicker('to'); if (Platform.OS === 'android') setShowAndroidPicker(true);
             }}>
               <Text style={s1.dateLbl}>Hasta</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
@@ -220,8 +221,7 @@ export default function HomeScreen() {
         {(Platform.OS === 'ios' ? showDatePicker : showAndroidPicker) && (
           <View style={{ alignItems: 'center' }}>
             <DateTimePicker
-              key={Platform.OS === 'ios' ? showDatePicker : 'android'}
-              value={tempDate}
+              value={pickerValueRef.current}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
               onChange={onDateChange}
@@ -234,8 +234,9 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={s1.pickerDone}
             onPress={() => {
-              if (showDatePicker === 'from') setFromDate(tempDate);
-              if (showDatePicker === 'to') setToDate(tempDate);
+              if (showDatePicker === 'from') setFromDate(pickerValueRef.current);
+              if (showDatePicker === 'to') setToDate(pickerValueRef.current);
+              setTempDate(pickerValueRef.current);
               setShowDatePicker(null);
             }}
           >
