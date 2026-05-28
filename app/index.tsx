@@ -185,11 +185,19 @@ export default function HomeScreen() {
           />
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
-            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(fromDate ?? new Date()); setShowDatePicker('from'); if (Platform.OS === 'android') setShowAndroidPicker(true); }}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => {
+              let d = fromDate ?? new Date();
+              if (toDate && d > toDate) d = toDate;
+              setTempDate(d); setShowDatePicker('from'); if (Platform.OS === 'android') setShowAndroidPicker(true);
+            }}>
               <Text style={s1.dateLbl}>Desde</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(toDate ?? new Date()); setShowDatePicker('to'); if (Platform.OS === 'android') setShowAndroidPicker(true); }}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => {
+              let d = toDate ?? new Date();
+              if (fromDate && d < fromDate) d = fromDate;
+              setTempDate(d); setShowDatePicker('to'); if (Platform.OS === 'android') setShowAndroidPicker(true);
+            }}>
               <Text style={s1.dateLbl}>Hasta</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
@@ -212,6 +220,7 @@ export default function HomeScreen() {
         {(Platform.OS === 'ios' ? showDatePicker : showAndroidPicker) && (
           <View style={{ alignItems: 'center' }}>
             <DateTimePicker
+              key={Platform.OS === 'ios' ? showDatePicker : 'android'}
               value={tempDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
