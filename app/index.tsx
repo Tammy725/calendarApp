@@ -80,6 +80,7 @@ export default function HomeScreen() {
   const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [confirmedDay, setConfirmedDay] = useState('');
@@ -99,49 +100,6 @@ export default function HomeScreen() {
     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
   }
-
-  const EMOJI_MAP: [string, string][] = [
-    ['CAFE', '☕️'], ['CAFÉ', '☕️'], ['COFFEE', '☕️'],
-    ['PLAYA', '🏖️'], ['BEACH', '🏖️'],
-    ['CENA', '🍽️'], ['DINNER', '🍽️'],
-    ['CUMPLEAÑOS', '🎂'], ['BIRTHDAY', '🎂'],
-    ['FIESTA', '🎉'], ['PARTY', '🎉'],
-    ['PISCINA', '🏊'], ['POOL', '🏊'],
-    ['CINE', '🎬'], ['MOVIE', '🎬'],
-    ['COMIDA', '🍕'], ['FOOD', '🍕'],
-    ['BEBIDA', '🍹'], ['DRINK', '🍹'], ['BAR', '🍹'],
-    ['MÚSICA', '🎵'], ['MUSIC', '🎵'],
-    ['DEPORTE', '⚽'], ['SPORT', '⚽'], ['FUTBOL', '⚽'], ['FÚTBOL', '⚽'],
-    ['VIAJE', '✈️'], ['VIAJAR', '✈️'], ['TRAVEL', '✈️'],
-    ['BODA', '💒'], ['WEDDING', '💒'],
-    ['NAVIDAD', '🎄'], ['NAV', '🎄'],
-    ['AÑO NUEVO', '🎆'], ['ANIO NUEVO', '🎆'],
-    ['ESTUDIO', '📚'], ['STUDY', '📚'],
-    ['TRABAJO', '💼'], ['WORK', '💼'],
-    ['GIMNASIO', '💪'], ['GYM', '💪'], ['EJERCICIO', '💪'],
-    ['NATURALEZA', '🌿'], ['NATURE', '🌿'],
-    ['MONTAÑA', '⛰️'], ['MOUNTAIN', '⛰️'],
-    ['NIEVE', '⛄'], ['SNOW', '⛄'],
-    ['SOL', '☀️'], ['SUN', '☀️'],
-    ['PICNIC', '🧺'],
-    ['ASADO', '🔥'], ['PARRILLA', '🔥'],
-    ['JUEGOS', '🎮'], ['GAMES', '🎮'], ['GAMING', '🎮'],
-    ['LECTURA', '📖'], ['READ', '📖'], ['LIBRO', '📖'], ['BOOK', '📖'],
-    ['PASEO', '🚶'], ['WALK', '🚶'],
-    ['BICICLETA', '🚴'], ['BIKE', '🚴'],
-    ['PESCA', '🎣'], ['FISH', '🎣'],
-    ['JARDIN', '🌱'], ['GARDEN', '🌱'],
-    ['MASCOTA', '🐾'], ['PET', '🐾'], ['PERRO', '🐕'], ['GATO', '🐱'],
-  ];
-
-  function getPlanEmoji(text: string): string {
-    const upper = text.toUpperCase();
-    for (const [word, emoji] of EMOJI_MAP) {
-      if (upper.includes(word)) return emoji;
-    }
-    return '';
-  }
-
   function formatDateRange(): string {
     if (!fromDate || !toDate) return '';
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -200,7 +158,7 @@ export default function HomeScreen() {
 
     const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
       if (Platform.OS === 'android') {
-        setShowDatePicker(null);
+        setShowAndroidPicker(false);
       }
       if (!selected) return;
       setTempDate(selected);
@@ -218,23 +176,20 @@ export default function HomeScreen() {
           <Text style={s1.sectionLabel}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
           <Text style={s1.sectionLabel}>Nombre del plan</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              style={[s1.inputActive, { flex: 1 }]}
-              value={planName}
-              onChangeText={(t) => setPlanName(t.toUpperCase())}
-              placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
-              placeholderTextColor="#9CA3AF"
-            />
-            {getPlanEmoji(planName) ? <Text style={{ fontSize: 28, marginLeft: 8 }}>{getPlanEmoji(planName)}</Text> : null}
-          </View>
+          <TextInput
+            style={s1.inputActive}
+            value={planName}
+            onChangeText={(t) => setPlanName(t.toUpperCase())}
+            placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
+            placeholderTextColor="#9CA3AF"
+          />
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
-            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(fromDate ?? new Date()); setShowDatePicker('from'); }}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(fromDate ?? new Date()); setShowDatePicker('from'); if (Platform.OS === 'android') setShowAndroidPicker(true); }}>
               <Text style={s1.dateLbl}>Desde</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(toDate ?? new Date()); setShowDatePicker('to'); }}>
+            <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(toDate ?? new Date()); setShowDatePicker('to'); if (Platform.OS === 'android') setShowAndroidPicker(true); }}>
               <Text style={s1.dateLbl}>Hasta</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
@@ -254,7 +209,7 @@ export default function HomeScreen() {
             ))}
           </View>
         </ScrollView>
-        {showDatePicker && (
+        {(Platform.OS === 'ios' ? showDatePicker : showAndroidPicker) && (
           <View style={{ alignItems: 'center' }}>
             <DateTimePicker
               value={tempDate}
