@@ -164,6 +164,7 @@ export default function HomeScreen() {
       if (!selected) return;
       pickerValueRef.current = selected;
       if (Platform.OS === 'android') {
+        setTempDate(selected);
         if (showDatePicker === 'from') setFromDate(selected);
         if (showDatePicker === 'to') setToDate(selected);
       }
@@ -221,7 +222,8 @@ export default function HomeScreen() {
         {(Platform.OS === 'ios' ? showDatePicker : showAndroidPicker) && (
           <View style={{ alignItems: 'center' }}>
             <DateTimePicker
-              value={pickerValueRef.current}
+              key={Platform.OS === 'ios' ? showDatePicker : 'android'}
+              value={Platform.OS === 'ios' ? pickerValueRef.current : tempDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
               onChange={onDateChange}
