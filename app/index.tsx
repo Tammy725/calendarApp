@@ -100,6 +100,48 @@ export default function HomeScreen() {
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
   }
 
+  const EMOJI_MAP: [string, string][] = [
+    ['CAFE', '☕️'], ['CAFÉ', '☕️'], ['COFFEE', '☕️'],
+    ['PLAYA', '🏖️'], ['BEACH', '🏖️'],
+    ['CENA', '🍽️'], ['DINNER', '🍽️'],
+    ['CUMPLEAÑOS', '🎂'], ['BIRTHDAY', '🎂'],
+    ['FIESTA', '🎉'], ['PARTY', '🎉'],
+    ['PISCINA', '🏊'], ['POOL', '🏊'],
+    ['CINE', '🎬'], ['MOVIE', '🎬'],
+    ['COMIDA', '🍕'], ['FOOD', '🍕'],
+    ['BEBIDA', '🍹'], ['DRINK', '🍹'], ['BAR', '🍹'],
+    ['MÚSICA', '🎵'], ['MUSIC', '🎵'],
+    ['DEPORTE', '⚽'], ['SPORT', '⚽'], ['FUTBOL', '⚽'], ['FÚTBOL', '⚽'],
+    ['VIAJE', '✈️'], ['VIAJAR', '✈️'], ['TRAVEL', '✈️'],
+    ['BODA', '💒'], ['WEDDING', '💒'],
+    ['NAVIDAD', '🎄'], ['NAV', '🎄'],
+    ['AÑO NUEVO', '🎆'], ['ANIO NUEVO', '🎆'],
+    ['ESTUDIO', '📚'], ['STUDY', '📚'],
+    ['TRABAJO', '💼'], ['WORK', '💼'],
+    ['GIMNASIO', '💪'], ['GYM', '💪'], ['EJERCICIO', '💪'],
+    ['NATURALEZA', '🌿'], ['NATURE', '🌿'],
+    ['MONTAÑA', '⛰️'], ['MOUNTAIN', '⛰️'],
+    ['NIEVE', '⛄'], ['SNOW', '⛄'],
+    ['SOL', '☀️'], ['SUN', '☀️'],
+    ['PICNIC', '🧺'],
+    ['ASADO', '🔥'], ['PARRILLA', '🔥'],
+    ['JUEGOS', '🎮'], ['GAMES', '🎮'], ['GAMING', '🎮'],
+    ['LECTURA', '📖'], ['READ', '📖'], ['LIBRO', '📖'], ['BOOK', '📖'],
+    ['PASEO', '🚶'], ['WALK', '🚶'],
+    ['BICICLETA', '🚴'], ['BIKE', '🚴'],
+    ['PESCA', '🎣'], ['FISH', '🎣'],
+    ['JARDIN', '🌱'], ['GARDEN', '🌱'],
+    ['MASCOTA', '🐾'], ['PET', '🐾'], ['PERRO', '🐕'], ['GATO', '🐱'],
+  ];
+
+  function getPlanEmoji(text: string): string {
+    const upper = text.toUpperCase();
+    for (const [word, emoji] of EMOJI_MAP) {
+      if (upper.includes(word)) return emoji;
+    }
+    return '';
+  }
+
   function formatDateRange(): string {
     if (!fromDate || !toDate) return '';
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -176,13 +218,16 @@ export default function HomeScreen() {
           <Text style={s1.sectionLabel}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
           <Text style={s1.sectionLabel}>Nombre del plan</Text>
-          <TextInput
-            style={s1.inputActive}
-            value={planName}
-            onChangeText={(t) => setPlanName(t.toUpperCase())}
-            placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
-            placeholderTextColor="#9CA3AF"
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TextInput
+              style={[s1.inputActive, { flex: 1 }]}
+              value={planName}
+              onChangeText={(t) => setPlanName(t.toUpperCase())}
+              placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
+              placeholderTextColor="#9CA3AF"
+            />
+            {getPlanEmoji(planName) ? <Text style={{ fontSize: 28, marginLeft: 8 }}>{getPlanEmoji(planName)}</Text> : null}
+          </View>
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
             <TouchableOpacity style={s1.dateBox} onPress={() => { setTempDate(fromDate ?? new Date()); setShowDatePicker('from'); }}>
