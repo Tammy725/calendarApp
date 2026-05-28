@@ -100,6 +100,15 @@ export default function HomeScreen() {
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
   }
 
+  function formatDateRange(): string {
+    if (!fromDate || !toDate) return '';
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const fd = `${days[fromDate.getDay()]} ${fromDate.getDate()} ${months[fromDate.getMonth()]}`;
+    const td = `${days[toDate.getDay()]} ${toDate.getDate()} ${months[toDate.getMonth()]}`;
+    return `${fd} - ${td}`;
+  }
+
   function formatCellTime(hourIdx: number): string {
     const start = parseInt(HOURS[hourIdx]);
     const dur = parseInt(durOptions[durationIdx]) || 2;
@@ -148,12 +157,14 @@ export default function HomeScreen() {
     };
 
     const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
+      if (Platform.OS === 'android') {
+        setShowDatePicker(null);
+      }
       if (!selected) return;
       setTempDate(selected);
       if (Platform.OS === 'android') {
         if (showDatePicker === 'from') setFromDate(selected);
         if (showDatePicker === 'to') setToDate(selected);
-        setShowDatePicker(null);
       }
     };
 
@@ -349,7 +360,7 @@ export default function HomeScreen() {
         <View style={s4.header}>
           <View>
             <Text style={s4.heatTitle}>Disponibilidad</Text>
-            <Text style={s4.heatSub}>4 personas · 13–19 enero</Text>
+            <Text style={s4.heatSub}>{formatDateRange()}</Text>
           </View>
           <View style={s4.avatarsRow}>
             {PEOPLE.slice(0, 4).map((p, i) => (
