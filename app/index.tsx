@@ -184,17 +184,13 @@ export default function HomeScreen() {
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
             <TouchableOpacity style={s1.dateBox} onPress={() => {
-              let d = fromDate ?? new Date();
-              if (toDate && d > toDate) d = toDate;
-              setTempDate(d); setShowDatePicker('from');
+              setTempDate(new Date()); setShowDatePicker('from');
             }}>
               <Text style={s1.dateLbl}>Desde</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s1.dateBox} onPress={() => {
-              let d = toDate ?? new Date();
-              if (fromDate && d < fromDate) d = fromDate;
-              setTempDate(d); setShowDatePicker('to');
+              setTempDate(new Date()); setShowDatePicker('to');
             }}>
               <Text style={s1.dateLbl}>Hasta</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
