@@ -559,9 +559,18 @@ export default function HomeScreen() {
             const link = `https://cuando.app/plan/abc123`;
             const dia = confirmedDay || 'Por confirmar';
             const hora = confirmedTime || 'A definir';
-            await Share.share({
-              message: `🎉 ${planName} — ${dia} · ${hora}\n\n📍 Unite acá:\n${link}`,
-            });
+            const msg = [
+              `🎉 *${planName}*`,
+              ``,
+              `📅 *Fecha:* ${dia}`,
+              `⏰ *Horario:* ${hora}`,
+              ``,
+              `📍 Unite al plan acá:`,
+              link,
+              ``,
+              `✨ Hecho con MiApp`,
+            ].join('\n');
+            await Share.share({ message: msg });
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
           </TouchableOpacity>
