@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, Share } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -555,7 +555,11 @@ export default function HomeScreen() {
           <TouchableOpacity style={s6.gcalBtn}>
             <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s6.shareBtn}>
+          <TouchableOpacity style={s6.shareBtn} onPress={() => {
+            const link = `cuando.app/plan/abc123`;
+            const msg = `📅 ${planName}\n${confirmedDay || 'Por confirmar'} · ${confirmedTime || 'Horario a definir'}\n\nUnite acá: ${link}`;
+            Share.share({ message: msg });
+          }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
           </TouchableOpacity>
         </View>
