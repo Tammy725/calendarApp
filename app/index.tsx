@@ -556,8 +556,18 @@ export default function HomeScreen() {
             <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s6.shareBtn} onPress={() => {
-            const link = `cuando.app/plan/abc123`;
-            const msg = `📅 ${planName}\n${confirmedDay || 'Por confirmar'} · ${confirmedTime || 'Horario a definir'}\n\nUnite acá: ${link}`;
+            const link = `https://cuando.app/plan/abc123`;
+            const msg = [
+              `🎉 *${planName}*`,
+              ``,
+              `📅 *Fecha:* ${confirmedDay || 'Por confirmar'}`,
+              `⏰ *Horario:* ${confirmedTime || 'A definir'}`,
+              ``,
+              `📍 Unite al plan acá:`,
+              `${link}`,
+              ``,
+              `✨ Hecho con MiApp`,
+            ].join('\n');
             Share.share({ message: msg });
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
