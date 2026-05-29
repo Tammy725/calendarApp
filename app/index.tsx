@@ -282,10 +282,13 @@ export default function HomeScreen() {
               { icon: '📱', label: 'Mensaje' },
               { icon: '📧', label: 'Email' },
             ].map((s) => (
-              <View key={s.label} style={s2.shareBtn}>
+              <TouchableOpacity key={s.label} style={s2.shareBtn} onPress={async () => {
+                const msg = `📅 Te invito al plan "${planName}" en MiApp\n\nUsá el código: PLAN-A1B2\nhttps://cuando.app/plan/abc123`;
+                await Share.share({ message: msg });
+              }}>
                 <Text style={s2.shareIcon}>{s.icon}</Text>
                 <Text style={s2.shareLabel}>{s.label}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
           <Text style={s2.peopleTitle}>Personas unidas · 2/5</Text>
@@ -560,8 +563,14 @@ export default function HomeScreen() {
             const dia = confirmedDay || 'Por confirmar';
             const hora = confirmedTime || 'A definir';
             const texto = `🎉 ${planName}\n📅 ${dia}\n⏰ ${hora}\n\n👇 Unite acá:\n${link}\n\n✨ Hecho con MiApp`;
-            const encoded = encodeURIComponent(texto);
-            await Linking.openURL(`https://wa.me/?text=${encoded}`);
+            const pudo = await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(texto)}`).catch(() => false);
+            if (pudo === false) {
+              Alert.alert('Compartir', '¿Querés copiar el mensaje o compartir?', [
+                { text: 'Copiar', onPress: () => { Clipboard.setStringAsync(texto); Alert.alert('Copiado ✅'); } },
+                { text: 'Compartir', onPress: () => Share.share({ message: texto }) },
+                { text: 'Cancelar', style: 'cancel' },
+              ]);
+            }
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
           </TouchableOpacity>
