@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, Share, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -561,8 +561,7 @@ export default function HomeScreen() {
             const hora = confirmedTime || 'A definir';
             const texto = `🎉 ${planName}\n📅 ${dia}\n⏰ ${hora}\n\n👇 Unite acá:\n${link}\n\n✨ Hecho con MiApp`;
             const encoded = encodeURIComponent(texto);
-            const waLink = `https://wa.me/?text=${encoded}`;
-            await Share.share({ message: texto, url: link });
+            await Linking.openURL(`https://wa.me/?text=${encoded}`);
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
           </TouchableOpacity>
