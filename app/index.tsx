@@ -132,7 +132,7 @@ export default function HomeScreen() {
           <View style={s0.logo}>
             <Text style={s0.logoText}>📅</Text>
           </View>
-          <Text style={s0.title}>Cuándo</Text>
+          <Text style={s0.title}>Calendario compartido</Text>
           <Text style={s0.subtitle}>
             Encuentra el momento perfecto{'\n'}para quedar con tu gente
           </Text>
