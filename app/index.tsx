@@ -559,18 +559,10 @@ export default function HomeScreen() {
             <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
-            const link = `https://cuando.app/plan/abc123`;
             const dia = confirmedDay || 'Por confirmar';
             const hora = confirmedTime || 'A definir';
-            const texto = `🎉 ${planName}\n📅 ${dia}\n⏰ ${hora}\n\n👇 Unite acá:\n${link}\n\n✨ Hecho con MiApp`;
-            const pudo = await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(texto)}`).catch(() => false);
-            if (pudo === false) {
-              Alert.alert('Compartir', '¿Querés copiar el mensaje o compartir?', [
-                { text: 'Copiar', onPress: () => { Clipboard.setStringAsync(texto); Alert.alert('Copiado ✅'); } },
-                { text: 'Compartir', onPress: () => Share.share({ message: texto }) },
-                { text: 'Cancelar', style: 'cancel' },
-              ]);
-            }
+            const texto = `🎉 ${planName}\n📅 ${dia}\n⏰ ${hora}\n\n👇 Unite acá:\nhttps://cuando.app/plan/abc123\n\n✨ Hecho con MiApp`;
+            await Share.share({ message: texto });
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
           </TouchableOpacity>
