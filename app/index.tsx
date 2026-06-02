@@ -78,7 +78,7 @@ export default function HomeScreen() {
   const [planName, setPlanName] = useState('');
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
-  const [durationIdx, setDurationIdx] = useState(1);
+  const [durationIdx, setDurationIdx] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [tempDate, setTempDate] = useState(new Date());
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -262,14 +262,17 @@ export default function HomeScreen() {
         <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent}>
           <Text style={s2.heading}>Invita a tu grupo 👥</Text>
           <View style={s2.linkCard}>
-            <Text style={s2.linkCardLabel}>Enlace de invitación</Text>
+            <Text style={s2.linkCardLabel}>Código y enlace de invitación</Text>
             <View style={s2.linkRow}>
-              <Text style={s2.linkText} numberOfLines={1}>cuando.app/plan/abc123</Text>
+              <Text style={s2.linkText} numberOfLines={1}>PLAN-A1B2</Text>
+            </View>
+            <View style={s2.linkRow}>
+              <Text style={s2.linkText} numberOfLines={1}>http://cuando.app/plan/abc123</Text>
               <TouchableOpacity
                 style={s2.copyBtn}
                 onPress={async () => {
-                  await Clipboard.setStringAsync('cuando.app/plan/abc123');
-                  Alert.alert('Copiado', 'Enlace copiado al portapapeles');
+                  await Clipboard.setStringAsync('🔑 Código del plan: *PLAN-A1B2*\n\nhttp://cuando.app/plan/abc123');
+                  Alert.alert('Copiado', 'Código y enlace copiados');
                 }}
               >
                 <Text style={s2.copyBtnText}>Copiar</Text>
@@ -278,13 +281,22 @@ export default function HomeScreen() {
           </View>
           <View style={s2.shareRow}>
             {[
-              { icon: '💬', label: 'WhatsApp' },
+              { icon: '💬', label: 'WhatsApp', isWa: true },
               { icon: '📱', label: 'Mensaje' },
-              { icon: '📧', label: 'Email' },
+              { icon: '📧', label: 'Email', isEmail: true },
             ].map((s) => (
               <TouchableOpacity key={s.label} style={s2.shareBtn} onPress={async () => {
-                const msg = `📅 Te invito al plan "${planName}" en MiApp\n\nUsá el código: PLAN-A1B2\nhttps://cuando.app/plan/abc123`;
-                await Share.share({ message: msg });
+                const codigo = 'PLAN-A1B2';
+                if (s.isEmail) {
+                  const subject = encodeURIComponent('Te invito a un plan en MiApp');
+                  const body = encodeURIComponent(`🔑 Código del plan: ${codigo}\n\nhttps://cuando.app/plan/abc123`);
+                  await Linking.openURL(`mailto:?subject=${subject}&body=${body}`);
+                } else {
+                  const msg = s.isWa
+                    ? `🔑 Código del plan: *${codigo}*\n\ncuando.app/plan/abc123`
+                    : `🔑 Código del plan: ${codigo}\n\nhttps://cuando.app/plan/abc123`;
+                  await Share.share({ message: msg });
+                }
               }}>
                 <Text style={s2.shareIcon}>{s.icon}</Text>
                 <Text style={s2.shareLabel}>{s.label}</Text>
@@ -561,7 +573,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
             const dia = confirmedDay || 'Por confirmar';
             const hora = confirmedTime || 'A definir';
-            const texto = `🎉 ${planName}\n📅 ${dia}\n⏰ ${hora}\n\n👇 Unite acá:\nhttps://cuando.app/plan/abc123\n\n✨ Hecho con MiApp`;
+            const texto = `🎉 *${planName}*\n📅 ${dia}\n⏰ ${hora}\n\n👇 Únete con el código: PLAN-A1B2\n\n✨ Hecho con MiApp`;
             await Share.share({ message: texto });
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
@@ -866,7 +878,7 @@ const s2 = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   linkRow: {
     flexDirection: 'row',
