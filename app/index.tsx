@@ -88,6 +88,30 @@ export default function HomeScreen() {
   const [modalDay, setModalDay] = useState('');
   const [modalTime, setModalTime] = useState('');
 
+  const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+
+  const [userGrid, setUserGrid] = useState<boolean[][]>(
+    () => HOURS.map(() => DAYS.map(() => false))
+  );
+
+  function toggleUserCell(hourIdx: number, dayIdx: number) {
+    setUserGrid(prev => {
+      const next = prev.map(r => [...r]);
+      next[hourIdx][dayIdx] = !next[hourIdx][dayIdx];
+      return next;
+    });
+  }
+
+  function isSlotBlocked(dayIdx: number, hourIdx: number): boolean {
+    return userGrid[hourIdx]?.[dayIdx] ?? false;
+  }
+
+  function getModifiedHeatmap(): number[][] {
+    return HEATMAP.map((row, ri) =>
+      row.map((v, ci) => isSlotBlocked(ci, ri) ? Math.max(v, 1) : v)
+    );
+  }
+
   const durOptions = ['1h', '2h', '3h', 'Todo el día'];
 
   function formatCellDay(dayIdx: number): string {
@@ -361,7 +385,7 @@ export default function HomeScreen() {
             <Text style={s3.googleG}>G</Text>
             <Text style={s3.googleText}> Conectar con Google</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s3.manualBtn}>
+          <TouchableOpacity style={s3.manualBtn} onPress={() => setScreen('blockout')}>
             <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
           </TouchableOpacity>
         </View>
@@ -369,7 +393,70 @@ export default function HomeScreen() {
     );
   }
 
+  if (screen === 'blockout') {
+    content = (
+      <View style={s7.wrap}>
+        <StatusBar style="dark" />
+        <TopNav title="Mis horarios" onBack={() => setScreen('conectar')} />
+        <View style={s7.header}>
+          <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
+          <Text style={s7.subtitle}>Así aparecerán como ocupadas en tu disponibilidad</Text>
+        </View>
+        <View style={s7.gridContainer}>
+          <View style={s7.gridHeader}>
+            <View style={{ width: 32 }} />
+            {DAYS.map((d, i) => (
+              <View key={i} style={s7.dayCell}>
+                <Text style={s7.dayLabel}>{d}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={s7.heatGrid}>
+            {HOURS.map((hr, ri) => (
+              <View key={ri} style={s7.heatRow}>
+                <View style={s7.hourCell}>
+                  <Text style={s7.hourLabel}>{hr}</Text>
+                </View>
+                {DAYS.map((_, ci) => {
+                  const blocked = userGrid[ri]?.[ci] ?? false;
+                  return (
+                    <TouchableOpacity
+                      key={ci}
+                      style={[s7.heatCell, {
+                        backgroundColor: blocked ? '#DC2626' : '#F9FAFB',
+                        borderColor: blocked ? '#DC2626' : '#E5E7EB',
+                      }]}
+                      onPress={() => toggleUserCell(ri, ci)}
+                    >
+                      {blocked && <Text style={s7.cellX}>✕</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={s7.legend}>
+          <View style={s7.legendItem}>
+            <View style={[s7.legendDot, { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1 }]} />
+            <Text style={s7.legendLabel}>Disponible</Text>
+          </View>
+          <View style={s7.legendItem}>
+            <View style={[s7.legendDot, { backgroundColor: '#DC2626' }]} />
+            <Text style={s7.legendLabel}>Ocupado</Text>
+          </View>
+        </View>
+        <View style={s7.bottom}>
+          <TouchableOpacity style={s7.saveBtn} onPress={() => setScreen('heatmap')}>
+            <Text style={s7.saveBtnText}>Siguiente →</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   if (screen === 'heatmap') {
+    const modifiedHeatmap = getModifiedHeatmap();
     content = (
       <View style={s4.wrap}>
         <StatusBar style="dark" />
@@ -394,7 +481,7 @@ export default function HomeScreen() {
           <View style={s4.gridScoreRow}>
             <View style={{ width: 28 }} />
             {DAYS.map((_, ci) => {
-              const green = HEATMAP.filter(r => r[ci] === 0).length;
+              const green = modifiedHeatmap.filter(r => r[ci] === 0).length;
               return (
                 <View key={ci} style={s4.dayCell}>
                   <Text style={[s4.scoreText, { color: green >= 5 ? '#10B981' : '#F59E0B' }]}>
@@ -413,7 +500,7 @@ export default function HomeScreen() {
             ))}
           </View>
           <View style={s4.heatGrid}>
-            {HEATMAP.map((row, ri) => (
+            {modifiedHeatmap.map((row, ri) => (
               <View key={ri} style={s4.heatRow}>
                 <View style={s4.hourCell}>
                   <Text style={s4.hourLabel}>{HOURS[ri]}</Text>
@@ -455,6 +542,11 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
+        <TouchableOpacity style={s4.editBlockBtn} onPress={() => setScreen('blockout')}>
+          <Text style={s4.editBlockBtnText}>
+            {userGrid.some(r => r.some(c => c)) ? 'Editar horarios ocupados ✏️' : 'Agregar horarios ocupados ✏️'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
           <Text style={s4.actionBtnText}>Horarios recomendados ✨</Text>
         </TouchableOpacity>
@@ -463,6 +555,14 @@ export default function HomeScreen() {
   }
 
   if (screen === 'mejores') {
+    const DAY_MAP: Record<string, number> = { Lunes: 0, Martes: 1, Miércoles: 2, Miercoles: 2, Jueves: 3, Viernes: 4 };
+    function isOptionBlocked(dayLabel: string): boolean {
+      const dayName = dayLabel.split(' ')[0];
+      const dayIdx = DAY_MAP[dayName];
+      if (dayIdx === undefined) return false;
+      return userGrid.some(row => row[dayIdx]);
+    }
+    const filteredOptions = OPTIONS.filter(o => !isOptionBlocked(o.day));
     content = (
       <View style={s5.wrap}>
         <StatusBar style="dark" />
@@ -470,7 +570,7 @@ export default function HomeScreen() {
         <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
-          {OPTIONS.map((o, i) => {
+          {filteredOptions.map((o, i) => {
             const isGood = i < 3;
             const c = isGood ? '#10B981' : '#F59E0B';
             const cl = isGood ? '#D1FAE5' : '#FEF3C7';
@@ -1206,6 +1306,19 @@ const s4 = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  editBlockBtn: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 18,
+    marginBottom: 12,
+  },
+  editBlockBtnText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
 const s5 = StyleSheet.create({
@@ -1439,11 +1552,119 @@ const s6 = StyleSheet.create({
     width: '100%',
   },
    shareBtnText: {
-     color: '#10B981',
-     fontSize: 16,
-     fontWeight: '700',
-   },
- });
+      color: '#10B981',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+
+const s7 = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  gridContainer: {
+    paddingHorizontal: 18,
+  },
+  gridHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  dayCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dayLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  heatGrid: {
+    gap: 4,
+  },
+  heatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  hourCell: {
+    width: 32,
+    alignItems: 'flex-end',
+    paddingRight: 4,
+  },
+  hourLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  heatCell: {
+    flex: 1,
+    aspectRatio: 1.3,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellX: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  legend: {
+    flexDirection: 'row',
+    gap: 20,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  legendLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  bottom: {
+    padding: 24,
+    paddingBottom: 36,
+    marginTop: 'auto',
+  },
+  saveBtn: {
+    backgroundColor: '#5B4FDB',
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+});
 
 const modalStyle = StyleSheet.create({
   overlay: {
