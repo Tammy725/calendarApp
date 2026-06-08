@@ -15,4 +15,7 @@ export const calendarApi = {
 
   disconnect: (id: string) =>
     api.delete<{ message: string }>(`/calendar/${id}`),
+
+  createEvent: (data: { title: string; description?: string; startTime: string; endTime: string; timeZone?: string }) =>
+    api.post<{ event: any; htmlLink: string }>('/calendar/events/create', data),
 };

@@ -23,11 +23,11 @@ const io = new SocketServer(httpServer, {
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
-app.use('/api/auth', authRouter);
-app.use('/api/calendar', authMiddleware, calendarRouter);
-app.use('/api/rooms', authMiddleware, roomsRouter);
-app.use('/api/availability', authMiddleware, availabilityRouter);
-app.use('/api/user', authMiddleware, userRouter);
+app.use('/auth', authRouter);
+app.use('/calendar', authMiddleware, calendarRouter);
+app.use('/rooms', authMiddleware, roomsRouter);
+app.use('/availability', authMiddleware, availabilityRouter);
+app.use('/user', authMiddleware, userRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

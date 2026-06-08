@@ -12,11 +12,11 @@ interface GoogleAuthUrlResponse {
 }
 
 export const authApi = {
-  getGoogleAuthUrl: () =>
-    api.post<GoogleAuthUrlResponse>('/auth/google/url'),
+  getGoogleAuthUrl: (redirectUri?: string) =>
+    api.post<GoogleAuthUrlResponse>('/auth/google/url', { redirectUri }),
 
-  handleGoogleCallback: (code: string) =>
-    api.post<AuthResponse>('/auth/google/callback', { code }),
+  handleGoogleCallback: (code: string, redirectUri?: string) =>
+    api.post<AuthResponse>('/auth/google/callback', { code, redirectUri }),
 
   getMe: () => api.get<User>('/auth/me'),
 };
@@ -26,16 +26,33 @@ export async function handleGoogleSignIn() {
     const { url } = await authApi.getGoogleAuthUrl();
 
     const result = await import('expo-web-browser').then(m =>
-      m.openAuthSessionAsync(url, 'mi-app://auth/callback')
+      m.openAuthSessionAsync(url, 'miapp://callback')
     );
 
     if (result.type === 'success') {
       const urlObj = new URL(result.url);
-      const code = urlObj.searchParams.get('code');
-      if (code) {
-        const authResponse = await authApi.handleGoogleCallback(code);
-        useAuthStore.getState().setAuth(authResponse.token, authResponse.user);
-        return authResponse.user;
+      const token = urlObj.searchParams.get('token');
+      const userId = urlObj.searchParams.get('userId');
+      const email = urlObj.searchParams.get('email');
+      const name = urlObj.searchParams.get('name');
+      const avatar = urlObj.searchParams.get('avatar');
+      if (token && userId) {
+        const user: User = {
+          id: userId,
+          email: email || '',
+          name: name || email || null,
+          avatar: avatar || null,
+          timezone: '',
+          preferredStartHour: 9,
+          preferredEndHour: 18,
+          bufferMinutes: 0,
+          defaultDurationMinutes: 60,
+          unavailableDays: [],
+          sleepStartHour: null,
+          sleepEndHour: null,
+        };
+        useAuthStore.getState().setAuth(token, user);
+        return user;
       }
     }
     return null;

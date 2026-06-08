@@ -14,16 +14,20 @@ const SCOPES = [
   'email',
 ];
 
-export function getGoogleAuthUrl(): string {
+export function getGoogleAuthUrl(redirectUri?: string): string {
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
     prompt: 'consent',
+    ...(redirectUri ? { redirect_uri: redirectUri } : {}),
   });
 }
 
-export async function getGoogleTokens(code: string) {
-  const { tokens } = await oauth2Client.getToken(code);
+export async function getGoogleTokens(code: string, redirectUri?: string) {
+  const { tokens } = await oauth2Client.getToken({
+    code,
+    ...(redirectUri ? { redirect_uri: redirectUri } : {}),
+  });
   oauth2Client.setCredentials(tokens);
   return tokens;
 }

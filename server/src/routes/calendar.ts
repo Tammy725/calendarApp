@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { google } from 'googleapis';
 import { prisma } from '../index';
 import { AuthRequest } from '../middleware/auth';
 import { syncCalendar } from '../services/calendar-sync';
+import { getAuthClient } from '../services/google-auth';
 
 export const calendarRouter = Router();
 
@@ -65,6 +67,40 @@ calendarRouter.get('/events', async (req: AuthRequest, res) => {
   });
 
   res.json(events);
+});
+
+calendarRouter.post('/events/create', async (req: AuthRequest, res) => {
+  try {
+    const { title, description, startTime, endTime, timeZone } = req.body;
+    if (!title || !startTime || !endTime) {
+      return res.status(400).json({ error: 'title, startTime, and endTime are required' });
+    }
+
+    const account = await prisma.calendarAccount.findFirst({
+      where: { userId: req.userId! },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!account) return res.status(400).json({ error: 'No calendar connected' });
+
+    const auth = getAuthClient(account.accessToken, account.refreshToken || undefined);
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    const event = await calendar.events.insert({
+      calendarId: account.calendarId,
+      requestBody: {
+        summary: title,
+        description: description || '',
+        start: { dateTime: startTime, timeZone: timeZone || 'UTC' },
+        end: { dateTime: endTime, timeZone: timeZone || 'UTC' },
+        reminders: { useDefault: true },
+      },
+    });
+
+    res.json({ event: event.data, htmlLink: event.data.htmlLink });
+  } catch (error: any) {
+    console.error('Create event error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to create event' });
+  }
 });
 
 calendarRouter.delete('/:id', async (req: AuthRequest, res) => {

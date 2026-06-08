@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, Share, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
+import { calendarApi } from '@/lib/api/calendar';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { handleGoogleSignIn } from '@/lib/api/auth';
+import * as Calendar from 'expo-calendar';
 
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
@@ -16,38 +20,34 @@ const PEOPLE = [
 ];
 
 const DAYS = ['L', 'M', 'M', 'J', 'V'];
-const HOURS = ['9h', '10h', '11h', '12h', '13h', '14h', '15h', '16h'];
+const HOURS = ['6h','7h','8h','9h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h','21h','22h','23h','0h','1h','2h','3h','4h','5h'];
+const DISPLAY_HOURS = ['6am','7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm','12am','1am','2am','3am','4am','5am'];
 
-const HEATMAP = [
-  [2, 1, 0, 0, 1],
-  [2, 0, 0, 1, 1],
-  [1, 0, 0, 0, 2],
-  [0, 0, 1, 1, 2],
-  [0, 1, 1, 0, 1],
-  [1, 0, 0, 0, 0],
-  [2, 0, 0, 1, 0],
-  [2, 1, 0, 0, 0],
-];
+const HEATMAP = Array.from({ length: 24 }, () => Array(5).fill(4));
 
 const CELL_COLORS: Record<number, string> = {
-  0: '#10B981',
-  1: '#F59E0B',
-  2: '#E5E7EB',
+  4: '#10B981',
+  3: '#D1FAE5',
+  2: '#FEF3C7',
+  1: '#F97316',
+  0: '#E5E7EB',
 };
 
 const CELL_LABELS: Record<number, string> = {
-  0: '4/4',
-  1: '2/4',
-  2: '0/4',
+  4: '4/4',
+  3: '3/4',
+  2: '2/4',
+  1: '1/4',
+  0: '0/4',
 };
 
 const OPTIONS = [
   { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
   { day: 'Viernes 17 ene', time: '8:00 – 10:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
-  { day: 'Jueves 16 ene', time: '7:00 – 9:00 PM · 2h', count: 3, color: '#10B981', bg: '#D1FAE5' },
-  { day: 'Jueves 16 ene', time: '9:00 – 11:00 AM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
-  { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#F59E0B', bg: '#FEF3C7' },
-  { day: 'Miércoles 15 ene', time: '5:00 – 7:00 PM · 2h', count: 3, color: '#F59E0B', bg: '#FEF3C7' },
+  { day: 'Jueves 16 ene', time: '5:00 – 7:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Jueves 16 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Miércoles 15 ene', time: '7:00 – 9:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
+  { day: 'Miércoles 15 ene', time: '5:00 – 7:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
 ];
 
 const STATUS_TEXT: Record<string, string> = {
@@ -81,16 +81,31 @@ export default function HomeScreen() {
   const [durationIdx, setDurationIdx] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [tempDate, setTempDate] = useState(new Date());
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [selectedOption, setSelectedOption] = useState<typeof OPTIONS[0] | null>(null);
   const [confirmedDay, setConfirmedDay] = useState('');
   const [confirmedTime, setConfirmedTime] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalDay, setModalDay] = useState('');
   const [modalTime, setModalTime] = useState('');
 
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (screen === 'heatmap' && !fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchDeviceCalendarEvents();
+    }
+    if (screen !== 'heatmap') {
+      fetchedRef.current = false;
+    }
+  }, [screen]);
+
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
   const [userGrid, setUserGrid] = useState<boolean[][]>(
+    () => HOURS.map(() => DAYS.map(() => false))
+  );
+  const [googleBusyGrid, setGoogleBusyGrid] = useState<boolean[][]>(
     () => HOURS.map(() => DAYS.map(() => false))
   );
 
@@ -108,11 +123,170 @@ export default function HomeScreen() {
 
   function getModifiedHeatmap(): number[][] {
     return HEATMAP.map((row, ri) =>
-      row.map((v, ci) => isSlotBlocked(ci, ri) ? Math.max(v, 1) : v)
+      row.map((v, ci) => {
+        let val = v;
+        if (isSlotBlocked(ci, ri)) val = Math.max(0, val - 1);
+        if (googleBusyGrid[ri]?.[ci]) val = Math.max(0, val - 1);
+        return val;
+      })
     );
   }
 
+  async function fetchDeviceCalendarEvents() {
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('Calendar permission not granted');
+        return;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      if (!calendars.length) {
+        console.warn('No calendars found');
+        return;
+      }
+      const calendarIds = calendars.map(c => c.id);
+
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date();
+      to.setDate(to.getDate() + 60);
+      to.setHours(23, 59, 59, 999);
+
+      const events = await Calendar.getEventsAsync(calendarIds, from, to);
+
+      const weekStart = new Date(fromDate ?? new Date());
+      const d = (weekStart.getDay() + 6) % 7;
+      weekStart.setDate(weekStart.getDate() - d);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 5);
+      weekEnd.setHours(0, 0, 0, 0);
+
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const matching = events.filter(ev => {
+        if (ev.allDay) return false;
+        const s = new Date(ev.startDate);
+        return s >= weekStart && s < weekEnd && s.getDay() !== 0 && s.getDay() !== 6;
+      });
+      const matchInfo = matching.slice(0, 5).map(ev => {
+        const s = new Date(ev.startDate);
+        return `${ev.title} ${s.getDate()} ${months[s.getMonth()]} ${s.getHours()}:${String(s.getMinutes()).padStart(2,'0')}`;
+      }).join('\n');
+      Alert.alert(`📊 Eventos en la semana: ${matching.length}`, matchInfo || 'Ninguno');
+
+      const busy = HOURS.map(() => DAYS.map(() => false));
+
+      for (const ev of matching) {
+        const s = new Date(ev.startDate);
+        const e = new Date(ev.endDate);
+        const dayIdx = s.getDay();
+        const col = dayIdx - 1;
+        const startH = s.getHours() + s.getMinutes() / 60;
+        const endH = e.getHours() + e.getMinutes() / 60;
+        for (let ri = 0; ri < HOURS.length; ri++) {
+          const slotStart = parseInt(HOURS[ri]);
+          const slotEnd = slotStart + 1;
+          if (startH < slotEnd && endH > slotStart) {
+            busy[ri][col] = true;
+          }
+        }
+      }
+      setGoogleBusyGrid(busy);
+    } catch (err) {
+      console.warn('Failed to read calendar events:', err);
+    }
+  }
+
   const durOptions = ['1h', '2h', '3h', 'Todo el día'];
+
+  const MONTH_MAP: Record<string, number> = {
+    'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5,
+    'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11,
+  };
+
+  function parseDisplayToISO(day: string, time: string): { start: string; end: string } | null {
+    const dc = day.replace(' de ', ' ').trim();
+    const dp = dc.split(' ');
+    const dn = parseInt(dp[dp.length - 2]);
+    const mn = MONTH_MAP[dp[dp.length - 1]?.toLowerCase() ?? ''];
+    if (isNaN(dn) || mn === undefined) return null;
+
+    const tc = time.replace(/\s*·.*$/, '').trim();
+
+    let m = tc.match(/(\d+):(\d+)\s+(AM|PM)\s*[–-]\s*(\d+):(\d+)\s+(AM|PM)/i);
+    if (m) {
+      const to24 = (h: number, a: string) => {
+        const u = a.toUpperCase();
+        if (u === 'PM' && h !== 12) return h + 12;
+        if (u === 'AM' && h === 12) return 0;
+        return h;
+      };
+      const y = (fromDate ?? new Date()).getFullYear();
+      return {
+        start: new Date(y, mn, dn, to24(+m[1], m[3]), +m[2]).toISOString(),
+        end: new Date(y, mn, dn, to24(+m[4], m[6]), +m[5]).toISOString(),
+      };
+    }
+
+    m = tc.match(/(\d+):(\d+)\s*[–-]\s*(\d+):(\d+)\s+(AM|PM)/i);
+    if (m) {
+      const a = m[5].toUpperCase();
+      const to24 = (h: number) => {
+        if (a === 'PM' && h !== 12) return h + 12;
+        if (a === 'AM' && h === 12) return 0;
+        return h;
+      };
+      const y = (fromDate ?? new Date()).getFullYear();
+      return {
+        start: new Date(y, mn, dn, to24(+m[1]), +m[2]).toISOString(),
+        end: new Date(y, mn, dn, to24(+m[3]), +m[4]).toISOString(),
+      };
+    }
+
+    return null;
+  }
+
+  const handleAddToGoogleCalendar = async () => {
+    try {
+      if (!useAuthStore.getState().isAuthenticated) {
+        const user = await handleGoogleSignIn();
+        if (!user) return;
+      }
+
+      const day = confirmedDay || selectedOption?.day;
+      const time = confirmedTime || selectedOption?.time;
+      if (!day || !time) {
+        Alert.alert('Error', 'No hay un horario confirmado');
+        return;
+      }
+
+      const parsed = parseDisplayToISO(day, time);
+      if (!parsed) {
+        Alert.alert('Error', 'No se pudo interpretar la fecha y hora');
+        return;
+      }
+
+      const { htmlLink } = await calendarApi.createEvent({
+        title: planName || 'Evento',
+        description: `Plan: ${planName}\nDía: ${day}\nHorario: ${time}`,
+        startTime: parsed.start,
+        endTime: parsed.end,
+      });
+
+      Alert.alert('✅ Agregado a Google Calendar', '', [
+        { text: 'Ver en Google', onPress: () => Linking.openURL(htmlLink) },
+        { text: 'OK' },
+      ]);
+    } catch (error: any) {
+      if (error?.message?.includes('No calendar connected')) {
+        Alert.alert('Sin conexión', 'Conectá tu calendario primero desde la pantalla "Conectar"');
+      } else {
+        Alert.alert('Error', error?.message || 'No se pudo crear el evento');
+      }
+    }
+  };
 
   function formatCellDay(dayIdx: number): string {
     const date = new Date(fromDate ?? new Date());
@@ -136,10 +310,13 @@ export default function HomeScreen() {
   function formatCellTime(hourIdx: number): string {
     const start = parseInt(HOURS[hourIdx]);
     const dur = parseInt(durOptions[durationIdx]) || 2;
-    const end = start + dur;
-    const ampm = (h: number) => (h >= 12 ? 'PM' : 'AM');
-    const h12 = (h: number) => (h > 12 ? h - 12 : h === 0 ? 12 : h);
-    return `${h12(start)}:00 ${ampm(start)} – ${h12(end)}:00 ${ampm(end)} · ${durOptions[durationIdx]}`;
+    const end = (start + dur) % 24;
+    const fmt = (h: number) => {
+      const a = h >= 12 ? 'PM' : 'AM';
+      const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `${h12}:00 ${a}`;
+    };
+    return `${fmt(start)} – ${fmt(end)} · ${durOptions[durationIdx]}`;
   }
 
   let content;
@@ -364,7 +541,7 @@ export default function HomeScreen() {
           <Text style={s3.subtitle}>
             Solo vemos cuándo estás ocupada.{'\n'}
             <Text style={{ color: '#10B981', fontWeight: '700' }}>
-              Nunca modificaremos tu calendario.
+              Solo creamos eventos cuando vos lo decidas.
             </Text>
           </Text>
           <View style={s3.privacyList}>
@@ -381,7 +558,13 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s3.bottomBtns}>
-          <TouchableOpacity style={s3.googleBtn} onPress={() => setScreen('heatmap')}>
+          <TouchableOpacity style={s3.googleBtn} onPress={async () => {
+            const user = await handleGoogleSignIn();
+            if (user) {
+              Alert.alert('✅ Conectado', `Calendario de ${user.email} conectado`);
+              setScreen('heatmap');
+            }
+          }}>
             <Text style={s3.googleG}>G</Text>
             <Text style={s3.googleText}> Conectar con Google</Text>
           </TouchableOpacity>
@@ -404,18 +587,19 @@ export default function HomeScreen() {
         </View>
         <View style={s7.gridContainer}>
           <View style={s7.gridHeader}>
-            <View style={{ width: 32 }} />
+            <View style={{ width: 38 }} />
             {DAYS.map((d, i) => (
               <View key={i} style={s7.dayCell}>
                 <Text style={s7.dayLabel}>{d}</Text>
               </View>
             ))}
           </View>
+          <ScrollView style={{ flex: 1, paddingHorizontal: 18 }}>
           <View style={s7.heatGrid}>
             {HOURS.map((hr, ri) => (
               <View key={ri} style={s7.heatRow}>
                 <View style={s7.hourCell}>
-                  <Text style={s7.hourLabel}>{hr}</Text>
+                  <Text style={s7.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
                 </View>
                 {DAYS.map((_, ci) => {
                   const blocked = userGrid[ri]?.[ci] ?? false;
@@ -435,6 +619,7 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
+          </ScrollView>
         </View>
         <View style={s7.legend}>
           <View style={s7.legendItem}>
@@ -479,62 +664,68 @@ export default function HomeScreen() {
         </View>
         <View style={s4.gridContainer}>
           <View style={s4.gridScoreRow}>
-            <View style={{ width: 28 }} />
+            <View style={{ width: 38 }} />
             {DAYS.map((_, ci) => {
-              const green = modifiedHeatmap.filter(r => r[ci] === 0).length;
+              const d = ((fromDate ?? new Date()).getDay() + 6) % 7;
+              const date = new Date(fromDate ?? new Date());
+              date.setDate(date.getDate() - d + ci);
+              const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
               return (
                 <View key={ci} style={s4.dayCell}>
-                  <Text style={[s4.scoreText, { color: green >= 5 ? '#10B981' : '#F59E0B' }]}>
-                    {green}/8
+                  <Text style={s4.scoreText}>
+                    {date.getDate()} {months[date.getMonth()]}
                   </Text>
                 </View>
               );
             })}
           </View>
           <View style={s4.gridHeader}>
-            <View style={{ width: 28 }} />
+            <View style={{ width: 38 }} />
             {DAYS.map((d, i) => (
               <View key={i} style={s4.dayCell}>
                 <Text style={s4.dayLabel}>{d}</Text>
               </View>
             ))}
           </View>
-          <View style={s4.heatGrid}>
-            {modifiedHeatmap.map((row, ri) => (
-              <View key={ri} style={s4.heatRow}>
-                <View style={s4.hourCell}>
-                  <Text style={s4.hourLabel}>{HOURS[ri]}</Text>
+          <ScrollView style={s4.heatGridScroll}>
+            <View style={s4.heatGrid}>
+              {modifiedHeatmap.map((row, ri) => (
+                <View key={ri} style={s4.heatRow}>
+                  <View style={s4.hourCell}>
+                    <Text style={s4.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
+                  </View>
+                  {row.map((v, ci) => {
+                    return (
+                      <TouchableOpacity
+                        key={ci}
+                        style={[s4.heatCell, {
+                          backgroundColor: CELL_COLORS[v],
+                        }]}
+                        onPress={() => {
+                          setModalDay(formatCellDay(ci));
+                          setModalTime(formatCellTime(ri));
+                          setShowModal(true);
+                        }}
+                      >
+                        <Text style={[s4.cellLabel, {
+                          color: v >= 3 ? '#065F46' : v === 2 ? '#92400E' : '#9CA3AF',
+                        }]}>
+                          {CELL_LABELS[v]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-                {row.map((v, ci) => {
-                  return (
-                    <TouchableOpacity
-                      key={ci}
-                      style={[s4.heatCell, {
-                        backgroundColor: CELL_COLORS[v],
-                      }]}
-                      onPress={() => {
-                        setModalDay(formatCellDay(ci));
-                        setModalTime(formatCellTime(ri));
-                        setShowModal(true);
-                      }}
-                    >
-                      <Text style={[s4.cellLabel, {
-                        color: v === 0 ? '#065F46' : v === 1 ? '#92400E' : '#9CA3AF',
-                      }]}>
-                        {CELL_LABELS[v]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          </ScrollView>
         </View>
         <View style={s4.legend}>
           {[
-            { color: '#10B981', label: 'Todos libres' },
-            { color: '#F59E0B', label: 'Algunos' },
-            { color: '#E5E7EB', label: 'Nadie' },
+            { color: '#10B981', label: '4/4' },
+            { color: '#D1FAE5', label: '3/4' },
+            { color: '#FEF3C7', label: '2/4' },
+            { color: '#E5E7EB', label: '0/4' },
           ].map((l) => (
             <View key={l.label} style={s4.legendItem}>
               <View style={[s4.legendDot, { backgroundColor: l.color }]} />
@@ -555,74 +746,82 @@ export default function HomeScreen() {
   }
 
   if (screen === 'mejores') {
-    const DAY_MAP: Record<string, number> = { Lunes: 0, Martes: 1, Miércoles: 2, Miercoles: 2, Jueves: 3, Viernes: 4 };
-    function isOptionBlocked(dayLabel: string): boolean {
-      const dayName = dayLabel.split(' ')[0];
-      const dayIdx = DAY_MAP[dayName];
-      if (dayIdx === undefined) return false;
-      return userGrid.some(row => row[dayIdx]);
-    }
-    const filteredOptions = OPTIONS.filter(o => !isOptionBlocked(o.day));
+    const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const filteredOptions = OPTIONS.filter(o => o.count === 4);
+    const groups: Record<string, typeof OPTIONS> = {};
+    filteredOptions.forEach(o => {
+      if (!groups[o.day]) groups[o.day] = [];
+      groups[o.day].push(o);
+    });
+    const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+      const pa = a.split(' '), pb = b.split(' ');
+      return (MONTHS.indexOf(pa[2]) * 100 + parseInt(pa[1])) - (MONTHS.indexOf(pb[2]) * 100 + parseInt(pb[1]));
+    });
     content = (
       <View style={s5.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Mejores horarios" onBack={() => setScreen('heatmap')} />
         <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
-          <Text style={s5.subtitle}>Ordenadas por disponibilidad</Text>
-          {filteredOptions.map((o, i) => {
-            const isGood = i < 3;
-            const c = isGood ? '#10B981' : '#F59E0B';
-            const cl = isGood ? '#D1FAE5' : '#FEF3C7';
-            const selected = selectedOption === i;
-            return (
-              <TouchableOpacity
-                key={`${o.day}-${i}`}
-                style={[s5.card, {
-                  backgroundColor: cl,
-                  borderColor: selected ? c : c + '30',
-                  borderWidth: selected ? 2.5 : 1.5,
-                }]}
-                onPress={() => setSelectedOption(i)}
-              >
-                <View style={s5.cardTop}>
-                  <View>
-                    <Text style={s5.cardDay}>{o.day}</Text>
-                    <Text style={s5.cardTime}>{o.time}</Text>
-                  </View>
-                  <View style={[s5.badge, { backgroundColor: c }]}>
-                    <Text style={s5.badgeText}>{o.count}/4</Text>
-                  </View>
-                </View>
-                <View style={s5.cardBottom}>
-                  <View style={s5.avatarsRow}>
-                    {PEOPLE.slice(0, o.count).map((p, j) => (
-                      <View key={p.name} style={[s5.avaSm, {
-                        backgroundColor: p.bg,
-                        marginLeft: j > 0 ? -6 : 0,
-                      }]}>
-                        <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
+          <Text style={s5.subtitle}>Todos disponibles</Text>
+          {sortedGroups.map(([dayLabel, options]) => (
+            <View key={dayLabel}>
+              <View style={s5.sectionHeader}>
+                <View style={s5.sectionLine} />
+                <Text style={s5.sectionText}>{dayLabel}</Text>
+                <View style={s5.sectionLine} />
+              </View>
+              {options.map((o, i) => {
+                const selected = selectedOption === o;
+                return (
+                  <TouchableOpacity
+                    key={`${o.day}-${o.time}`}
+                    style={[s5.card, {
+                      backgroundColor: o.bg,
+                      borderColor: selected ? o.color : o.color + '30',
+                      borderWidth: selected ? 2.5 : 1.5,
+                    }]}
+                    onPress={() => setSelectedOption(o)}
+                  >
+                    <View style={s5.cardTop}>
+                      <View>
+                        <Text style={s5.cardTime}>{o.time}</Text>
                       </View>
-                    ))}
-                  </View>
-                  {selected ? (
-                    <TouchableOpacity
-                      style={[s5.chooseBtn, { backgroundColor: c }]}
-                      onPress={() => {
-                        setModalDay(o.day);
-                        setModalTime(o.time);
-                        setShowModal(true);
-                      }}
-                    >
-                      <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={[s5.canText, { color: c }]}>{o.count}/4 disponibles</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                      <View style={[s5.badge, { backgroundColor: o.color }]}>
+                        <Text style={s5.badgeText}>{o.count}/4</Text>
+                      </View>
+                    </View>
+                    <View style={s5.cardBottom}>
+                      <View style={s5.avatarsRow}>
+                        {PEOPLE.slice(0, o.count).map((p, j) => (
+                          <View key={p.name} style={[s5.avaSm, {
+                            backgroundColor: p.bg,
+                            marginLeft: j > 0 ? -6 : 0,
+                          }]}>
+                            <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      {selected ? (
+                        <TouchableOpacity
+                          style={[s5.chooseBtn, { backgroundColor: o.color }]}
+                          onPress={() => {
+                            setModalDay(o.day);
+                            setModalTime(o.time);
+                            setShowModal(true);
+                          }}
+                        >
+                          <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={[s5.canText, { color: o.color }]}>{o.count}/4 disponibles</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </ScrollView>
       </View>
     );
@@ -647,8 +846,8 @@ export default function HomeScreen() {
                 <Text style={{ fontSize: 18 }}>📅</Text>
               </View>
               <View>
-                <Text style={s6.dateVal}>{confirmedDay || (selectedOption != null ? OPTIONS[selectedOption].day : 'Miércoles 15 de enero')}</Text>
-                <Text style={s6.timeVal}>{confirmedTime || (selectedOption != null ? OPTIONS[selectedOption].time : '7:00 PM – 9:00 PM · 2 horas')}</Text>
+                <Text style={s6.dateVal}>{confirmedDay || selectedOption?.day || 'Miércoles 15 de enero'}</Text>
+                <Text style={s6.timeVal}>{confirmedTime || selectedOption?.time || '7:00 PM – 9:00 PM · 2 horas'}</Text>
               </View>
             </View>
             <Text style={s6.attendLbl}>Asistentes</Text>
@@ -667,7 +866,7 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
         <View style={s6.bottom}>
-          <TouchableOpacity style={s6.gcalBtn}>
+          <TouchableOpacity style={s6.gcalBtn} onPress={handleAddToGoogleCalendar}>
             <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
@@ -1216,6 +1415,9 @@ const s4 = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 18,
   },
+  heatGridScroll: {
+    flex: 1,
+  },
   gridScoreRow: {
     flexDirection: 'row',
     gap: 4,
@@ -1243,22 +1445,22 @@ const s4 = StyleSheet.create({
     color: '#6B7280',
   },
   heatGrid: {
-    flex: 1,
     gap: 4,
+    paddingBottom: 12,
   },
   heatRow: {
-    flex: 1,
     flexDirection: 'row',
     gap: 4,
+    height: 32,
   },
   hourCell: {
-    width: 28,
+    width: 38,
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingRight: 4,
   },
   hourLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6B7280',
     fontWeight: '600',
   },
@@ -1269,7 +1471,7 @@ const s4 = StyleSheet.create({
     justifyContent: 'center',
   },
   cellLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   legend: {
@@ -1344,6 +1546,25 @@ const s5 = StyleSheet.create({
     fontSize: 15,
     color: '#6B7280',
     marginBottom: 18,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    marginTop: 6,
+  },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  sectionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginHorizontal: 12,
   },
   card: {
     borderRadius: 20,
@@ -1580,12 +1801,13 @@ const s7 = StyleSheet.create({
     color: '#6B7280',
   },
   gridContainer: {
-    paddingHorizontal: 18,
+    flex: 1,
   },
   gridHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
+    paddingHorizontal: 18,
   },
   dayCell: {
     flex: 1,
@@ -1598,32 +1820,34 @@ const s7 = StyleSheet.create({
   },
   heatGrid: {
     gap: 4,
+    paddingBottom: 8,
   },
   heatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    height: 30,
   },
   hourCell: {
-    width: 32,
+    width: 38,
     alignItems: 'flex-end',
     paddingRight: 4,
   },
   hourLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#9CA3AF',
     fontWeight: '600',
   },
   heatCell: {
     flex: 1,
-    aspectRatio: 1.3,
+    height: 26,
     borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cellX: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     fontWeight: '700',
   },
