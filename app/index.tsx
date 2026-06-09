@@ -561,9 +561,9 @@ export default function HomeScreen() {
           </Text>
           <View style={s3.privacyList}>
             {[
+              { icon: '📅', text: 'Sincroniza tu calendario automáticamente' },
               { icon: '🔒', text: 'Solo lectura — sin cambios' },
               { icon: '👁️', text: 'El grupo solo ve libre / ocupado' },
-              { icon: '🗑️', text: 'Desconecta cuando quieras' },
             ].map((item) => (
               <View key={item.text} style={s3.privacyItem}>
                 <Text style={s3.privacyIcon}>{item.icon}</Text>
@@ -573,15 +573,9 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s3.bottomBtns}>
-          <TouchableOpacity style={s3.googleBtn} onPress={async () => {
-            const user = await handleGoogleSignIn();
-            if (user) {
-              Alert.alert('✅ Conectado', `Calendario de ${user.email} conectado`);
-              setScreen('heatmap');
-            }
-          }}>
-            <Text style={s3.googleG}>G</Text>
-            <Text style={s3.googleText}> Conectar con Google</Text>
+          <TouchableOpacity style={s3.googleBtn} onPress={() => {}}>
+            <Text style={{ fontSize: 14 }}>📆</Text>
+            <Text style={s3.googleText}> Conectar calendario</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s3.manualBtn} onPress={() => setScreen('blockout')}>
             <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
@@ -1388,8 +1382,8 @@ const s3 = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   privacyIcon: {
-    fontSize: 20,
-    width: 26,
+    fontSize: 16,
+    width: 22,
   },
   privacyText: {
     fontSize: 15,
