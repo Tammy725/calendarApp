@@ -1549,6 +1549,7 @@ const s4 = StyleSheet.create({
     justifyContent: 'center',
     gap: 20,
     paddingVertical: 0,
+    marginBottom: 6,
   },
   pageArrow: {
     fontSize: 18,
@@ -1963,6 +1964,7 @@ const s7 = StyleSheet.create({
     justifyContent: 'center',
     gap: 20,
     paddingVertical: 0,
+    marginBottom: 6,
   },
   pageArrow: {
     fontSize: 18,
