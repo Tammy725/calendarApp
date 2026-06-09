@@ -99,9 +99,12 @@ export default function HomeScreen() {
     if (!fromDate || !toDate) return [];
     const cols: { label: string; date: Date }[] = [];
     const cur = new Date(fromDate);
+    cur.setHours(0, 0, 0, 0);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
     const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    while (cur <= toDate) {
+    while (cur <= end) {
       cols.push({ label: `${days[cur.getDay()]} ${cur.getDate()} ${months[cur.getMonth()]}`, date: new Date(cur) });
       cur.setDate(cur.getDate() + 1);
     }
@@ -573,7 +576,11 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s3.bottomBtns}>
-          <TouchableOpacity style={s3.googleBtn} onPress={() => {}}>
+          <TouchableOpacity style={s3.googleBtn} onPress={async () => {
+            await fetchDeviceCalendarEvents();
+            Alert.alert('✅ Conectado', 'Calendario sincronizado correctamente');
+            setScreen('heatmap');
+          }}>
             <Text style={{ fontSize: 14 }}>📆</Text>
             <Text style={s3.googleText}> Conectar calendario</Text>
           </TouchableOpacity>
