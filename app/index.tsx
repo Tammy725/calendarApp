@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { router } from 'expo-router';
 import { calendarApi } from '@/lib/api/calendar';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { handleGoogleSignIn } from '@/lib/api/auth';
@@ -90,6 +89,11 @@ export default function HomeScreen() {
   const [showModal, setShowModal] = useState(false);
   const [modalDay, setModalDay] = useState('');
   const [modalTime, setModalTime] = useState('');
+
+  const [roomCode, setRoomCode] = useState('');
+  const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number }[]>([]);
+  const [joinInput, setJoinInput] = useState('');
+  const [joining, setJoining] = useState(false);
 
   const fetchedRef = useRef(false);
 
@@ -354,7 +358,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('crear'); }}>
             <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s0.ghostBtn} onPress={() => router.push('/join')}>
+          <TouchableOpacity style={s0.ghostBtn} onPress={() => setScreen('join')}>
             <Text style={s0.ghostBtnText}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
@@ -465,6 +469,9 @@ export default function HomeScreen() {
               return;
             }
             setScreen('invitar');
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            setRoomCode(code);
+            setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx }]);
           }}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
@@ -483,14 +490,14 @@ export default function HomeScreen() {
           <View style={s2.linkCard}>
             <Text style={s2.linkCardLabel}>Código y enlace de invitación</Text>
             <View style={s2.linkRow}>
-              <Text style={s2.linkText} numberOfLines={1}>PLAN-A1B2</Text>
+              <Text style={s2.linkText} numberOfLines={1}>{roomCode}</Text>
             </View>
             <View style={s2.linkRow}>
-              <Text style={s2.linkText} numberOfLines={1}>http://cuando.app/plan/abc123</Text>
+                <Text style={s2.linkText} numberOfLines={1}>http://miapp.com/unirse/{roomCode}</Text>
               <TouchableOpacity
                 style={s2.copyBtn}
                 onPress={async () => {
-                  await Clipboard.setStringAsync('🔑 Código del plan: *PLAN-A1B2*\n\nhttp://cuando.app/plan/abc123');
+                  await Clipboard.setStringAsync(`🔑 Código del plan: *${roomCode}*\n\nhttp://miapp.com/unirse/${roomCode}`);
                   Alert.alert('Copiado', 'Código y enlace copiados');
                 }}
               >
@@ -505,7 +512,7 @@ export default function HomeScreen() {
               { icon: '📧', label: 'Email', isEmail: true },
             ].map((s) => (
               <TouchableOpacity key={s.label} style={s2.shareBtn} onPress={async () => {
-                const codigo = 'PLAN-A1B2';
+                const codigo = roomCode;
                 if (s.isEmail) {
                   const subject = encodeURIComponent('Te invito a un plan en MiApp');
                   const body = encodeURIComponent(`🔑 Código del plan: ${codigo}\n\nhttps://cuando.app/plan/abc123`);
@@ -586,6 +593,60 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={s3.manualBtn} onPress={() => setScreen('blockout')}>
             <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === 'join') {
+    content = (
+      <View style={s2.wrap}>
+        <StatusBar style="dark" />
+        <TopNav title="Unirse" onBack={() => setScreen('inicio')} />
+        <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
+          <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa el código que te compartieron</Text>
+          <TextInput
+            style={{
+              width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
+              padding: 16, fontSize: 20, color: '#11181C', textAlign: 'center', letterSpacing: 4,
+              marginTop: 20,
+            }}
+            placeholder="Ej: A1B2C3"
+            value={joinInput}
+            onChangeText={setJoinInput}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={{ width: '100%', backgroundColor: '#5B4FDB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 }}
+            disabled={joining}
+            onPress={async () => {
+              if (!joinInput.trim()) {
+                Alert.alert('Código requerido', 'Ingresa el código del plan');
+                return;
+              }
+              setJoining(true);
+              const match = createdPlans.find(p => p.code === joinInput.trim().toUpperCase());
+              if (match) {
+                setPlanName(match.name);
+                setFromDate(match.fromDate);
+                setToDate(match.toDate);
+                setDurationIdx(match.durationIdx);
+                setRoomCode(match.code);
+                setJoining(false);
+                setJoinInput('');
+                setScreen('conectar');
+              } else {
+                setJoining(false);
+                Alert.alert('No encontrado', 'No hay un plan con ese código');
+              }
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
+              {joining ? 'Buscando...' : 'Unirse'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
