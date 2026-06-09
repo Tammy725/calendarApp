@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, Share, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,11 +19,13 @@ const PEOPLE = [
   { initial: 'D', name: 'Diego', color: '#9CA3AF', bg: '#F3F4F6' },
 ];
 
-const DAYS = ['L', 'M', 'M', 'J', 'V'];
 const HOURS = ['6h','7h','8h','9h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h','21h','22h','23h','0h','1h','2h','3h','4h','5h'];
 const DISPLAY_HOURS = ['6am','7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm','12am','1am','2am','3am','4am','5am'];
+const PAGE_SIZE = 5;
 
-const HEATMAP = Array.from({ length: 24 }, () => Array(5).fill(4));
+function makeGrid(cols: number): number[][] {
+  return Array.from({ length: 24 }, () => Array(cols).fill(4));
+}
 
 const CELL_COLORS: Record<number, string> = {
   4: '#10B981',
@@ -81,6 +83,7 @@ export default function HomeScreen() {
   const [durationIdx, setDurationIdx] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [tempDate, setTempDate] = useState(new Date());
+  const pickedDateRef = useRef(new Date());
   const [selectedOption, setSelectedOption] = useState<typeof OPTIONS[0] | null>(null);
   const [confirmedDay, setConfirmedDay] = useState('');
   const [confirmedTime, setConfirmedTime] = useState('');
@@ -90,7 +93,34 @@ export default function HomeScreen() {
 
   const fetchedRef = useRef(false);
 
+  const [page, setPage] = useState(0);
+
+  const dayColumns = useMemo(() => {
+    if (!fromDate || !toDate) return [];
+    const cols: { label: string; date: Date }[] = [];
+    const cur = new Date(fromDate);
+    const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    while (cur <= toDate) {
+      cols.push({ label: `${days[cur.getDay()]} ${cur.getDate()} ${months[cur.getMonth()]}`, date: new Date(cur) });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return cols;
+  }, [fromDate, toDate]);
+
+  const totalPages = Math.max(1, Math.ceil(dayColumns.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const rawVisible = dayColumns.slice(safePage * PAGE_SIZE, (safePage * PAGE_SIZE) + PAGE_SIZE);
+  const visibleColumns: ({ label: string; date: Date } | null)[] =
+    rawVisible.length < PAGE_SIZE
+      ? [...rawVisible, ...Array(PAGE_SIZE - rawVisible.length).fill(null)]
+      : rawVisible;
+  const colCount = Math.max(1, dayColumns.length);
+
+  useEffect(() => { setPage(0); }, [fromDate, toDate]);
+
   useEffect(() => {
+    setPage(0);
     if (screen === 'heatmap' && !fetchedRef.current) {
       fetchedRef.current = true;
       fetchDeviceCalendarEvents();
@@ -100,14 +130,20 @@ export default function HomeScreen() {
     }
   }, [screen]);
 
-  const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  const [userGrid, setUserGrid] = useState<boolean[][]>([]);
+  const [googleBusyGrid, setGoogleBusyGrid] = useState<boolean[][]>([]);
 
-  const [userGrid, setUserGrid] = useState<boolean[][]>(
-    () => HOURS.map(() => DAYS.map(() => false))
-  );
-  const [googleBusyGrid, setGoogleBusyGrid] = useState<boolean[][]>(
-    () => HOURS.map(() => DAYS.map(() => false))
-  );
+  useEffect(() => {
+    if (!colCount) return;
+    setUserGrid(prev => {
+      if (prev.length === 24 && prev[0]?.length === colCount) return prev;
+      return Array.from({ length: 24 }, () => Array(colCount).fill(false));
+    });
+    setGoogleBusyGrid(prev => {
+      if (prev.length === 24 && prev[0]?.length === colCount) return prev;
+      return Array.from({ length: 24 }, () => Array(colCount).fill(false));
+    });
+  }, [colCount]);
 
   function toggleUserCell(hourIdx: number, dayIdx: number) {
     setUserGrid(prev => {
@@ -117,15 +153,12 @@ export default function HomeScreen() {
     });
   }
 
-  function isSlotBlocked(dayIdx: number, hourIdx: number): boolean {
-    return userGrid[hourIdx]?.[dayIdx] ?? false;
-  }
-
   function getModifiedHeatmap(): number[][] {
-    return HEATMAP.map((row, ri) =>
+    const base = makeGrid(colCount);
+    return base.map((row, ri) =>
       row.map((v, ci) => {
         let val = v;
-        if (isSlotBlocked(ci, ri)) val = Math.max(0, val - 1);
+        if (userGrid[ri]?.[ci]) val = Math.max(0, val - 1);
         if (googleBusyGrid[ri]?.[ci]) val = Math.max(0, val - 1);
         return val;
       })
@@ -156,40 +189,22 @@ export default function HomeScreen() {
 
       const events = await Calendar.getEventsAsync(calendarIds, from, to);
 
-      const weekStart = new Date(fromDate ?? new Date());
-      const d = (weekStart.getDay() + 6) % 7;
-      weekStart.setDate(weekStart.getDate() - d);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 5);
-      weekEnd.setHours(0, 0, 0, 0);
+      const colDays = dayColumns.length ? dayColumns : [{ date: fromDate ?? new Date() }];
+      const busy = Array.from({ length: 24 }, () => Array(colDays.length).fill(false));
 
-      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      const matching = events.filter(ev => {
-        if (ev.allDay) return false;
-        const s = new Date(ev.startDate);
-        return s >= weekStart && s < weekEnd && s.getDay() !== 0 && s.getDay() !== 6;
-      });
-      const matchInfo = matching.slice(0, 5).map(ev => {
-        const s = new Date(ev.startDate);
-        return `${ev.title} ${s.getDate()} ${months[s.getMonth()]} ${s.getHours()}:${String(s.getMinutes()).padStart(2,'0')}`;
-      }).join('\n');
-      Alert.alert(`📊 Eventos en la semana: ${matching.length}`, matchInfo || 'Ninguno');
-
-      const busy = HOURS.map(() => DAYS.map(() => false));
-
-      for (const ev of matching) {
+      for (const ev of events) {
+        if (ev.allDay) continue;
         const s = new Date(ev.startDate);
         const e = new Date(ev.endDate);
-        const dayIdx = s.getDay();
-        const col = dayIdx - 1;
+        const colIdx = colDays.findIndex(c => c.date.toDateString() === s.toDateString());
+        if (colIdx === -1) continue;
         const startH = s.getHours() + s.getMinutes() / 60;
         const endH = e.getHours() + e.getMinutes() / 60;
-        for (let ri = 0; ri < HOURS.length; ri++) {
+        for (let ri = 0; ri < 24; ri++) {
           const slotStart = parseInt(HOURS[ri]);
           const slotEnd = slotStart + 1;
           if (startH < slotEnd && endH > slotStart) {
-            busy[ri][col] = true;
+            busy[ri][colIdx] = true;
           }
         }
       }
@@ -288,14 +303,8 @@ export default function HomeScreen() {
     }
   };
 
-  function formatCellDay(dayIdx: number): string {
-    const date = new Date(fromDate ?? new Date());
-    const dayOfWeek = date.getDay();
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    date.setDate(date.getDate() - diffToMonday + dayIdx);
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  function formatCellDay(colIdx: number): string {
+    return dayColumns[colIdx]?.label ?? '';
   }
 
   function formatDateRange(): string {
@@ -360,6 +369,7 @@ export default function HomeScreen() {
     const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
       if (!selected) return;
       setTempDate(selected);
+      pickedDateRef.current = selected;
       if (Platform.OS === 'android') {
         if (showDatePicker === 'from') setFromDate(selected);
         if (showDatePicker === 'to') setToDate(selected);
@@ -385,13 +395,17 @@ export default function HomeScreen() {
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
             <TouchableOpacity style={s1.dateBox} onPress={() => {
-              setTempDate(new Date()); setShowDatePicker('from');
+              const d = new Date();
+              pickedDateRef.current = d;
+              setTempDate(d); setShowDatePicker('from');
             }}>
               <Text style={s1.dateLbl}>Desde</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s1.dateBox} onPress={() => {
-              setTempDate(new Date()); setShowDatePicker('to');
+              const d = new Date();
+              pickedDateRef.current = d;
+              setTempDate(d); setShowDatePicker('to');
             }}>
               <Text style={s1.dateLbl}>Hasta</Text>
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
@@ -428,8 +442,9 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={s1.pickerDone}
             onPress={() => {
-              if (showDatePicker === 'from') setFromDate(tempDate);
-              if (showDatePicker === 'to') setToDate(tempDate);
+              const d = pickedDateRef.current;
+              if (showDatePicker === 'from') setFromDate(d);
+              if (showDatePicker === 'to') setToDate(d);
               setShowDatePicker(null);
             }}
           >
@@ -586,22 +601,54 @@ export default function HomeScreen() {
           <Text style={s7.subtitle}>Así aparecerán como ocupadas en tu disponibilidad</Text>
         </View>
         <View style={s7.gridContainer}>
-          <View style={s7.gridHeader}>
+          <View style={s7.paginationRow}>
+            <TouchableOpacity
+              disabled={safePage === 0}
+              onPress={() => setPage(p => Math.max(0, p - 1))}
+            >
+              <Text style={[s7.pageArrow, safePage === 0 && { opacity: 0.3 }]}>{'◀'}</Text>
+            </TouchableOpacity>
+            <Text style={s7.pageText}>{safePage + 1}/{totalPages}</Text>
+            <TouchableOpacity
+              disabled={safePage >= totalPages - 1}
+              onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            >
+              <Text style={[s7.pageArrow, safePage >= totalPages - 1 && { opacity: 0.3 }]}>{'▶'}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s7.gridScoreRow}>
             <View style={{ width: 38 }} />
-            {DAYS.map((d, i) => (
+            {visibleColumns.map((col, i) => (
               <View key={i} style={s7.dayCell}>
-                <Text style={s7.dayLabel}>{d}</Text>
+                <Text style={[s7.scoreText, !col && { color: '#D1D5DB' }]}>
+                  {col ? `${col.date.getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][col.date.getMonth()]}` : '—'}
+                </Text>
               </View>
             ))}
           </View>
-          <ScrollView style={{ flex: 1, paddingHorizontal: 18 }}>
+          <View style={s7.gridHeader}>
+            <View style={{ width: 38 }} />
+            {visibleColumns.map((col, i) => (
+              <View key={i} style={s7.dayCell}>
+                <Text style={[s7.dayLabel, !col && { color: '#D1D5DB' }]}>{col ? ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][col.date.getDay()] : '·'}</Text>
+              </View>
+            ))}
+          </View>
+          <ScrollView style={{ flex: 1 }}>
           <View style={s7.heatGrid}>
             {HOURS.map((hr, ri) => (
               <View key={ri} style={s7.heatRow}>
                 <View style={s7.hourCell}>
                   <Text style={s7.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
                 </View>
-                {DAYS.map((_, ci) => {
+                {visibleColumns.map((col, ci) => {
+                  if (!col) {
+                    return (
+                      <View key={ci} style={[s7.heatCell, { backgroundColor: '#F3F4F6', borderColor: '#F3F4F6' }]}>
+                        <Text style={s7.cellX}>—</Text>
+                      </View>
+                    );
+                  }
                   const blocked = userGrid[ri]?.[ci] ?? false;
                   return (
                     <TouchableOpacity
@@ -663,27 +710,38 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s4.gridContainer}>
+          <View style={s4.paginationRow}>
+            <TouchableOpacity
+              disabled={safePage === 0}
+              onPress={() => setPage(p => Math.max(0, p - 1))}
+            >
+              <Text style={[s4.pageArrow, safePage === 0 && { opacity: 0.3 }]}>{'◀'}</Text>
+            </TouchableOpacity>
+            <Text style={s4.pageText}>{safePage + 1}/{totalPages}</Text>
+            <TouchableOpacity
+              disabled={safePage >= totalPages - 1}
+              onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            >
+              <Text style={[s4.pageArrow, safePage >= totalPages - 1 && { opacity: 0.3 }]}>{'▶'}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={s4.gridScoreRow}>
             <View style={{ width: 38 }} />
-            {DAYS.map((_, ci) => {
-              const d = ((fromDate ?? new Date()).getDay() + 6) % 7;
-              const date = new Date(fromDate ?? new Date());
-              date.setDate(date.getDate() - d + ci);
-              const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-              return (
-                <View key={ci} style={s4.dayCell}>
-                  <Text style={s4.scoreText}>
-                    {date.getDate()} {months[date.getMonth()]}
-                  </Text>
-                </View>
-              );
-            })}
+            {visibleColumns.map((col, ci) => (
+              <View key={ci} style={s4.dayCell}>
+                <Text style={[s4.scoreText, !col && { color: '#D1D5DB' }]}>
+                  {col ? `${col.date.getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][col.date.getMonth()]}` : '—'}
+                </Text>
+              </View>
+            ))}
           </View>
           <View style={s4.gridHeader}>
             <View style={{ width: 38 }} />
-            {DAYS.map((d, i) => (
-              <View key={i} style={s4.dayCell}>
-                <Text style={s4.dayLabel}>{d}</Text>
+            {visibleColumns.map((col, ci) => (
+              <View key={ci} style={s4.dayCell}>
+                <Text style={[s4.dayLabel, !col && { color: '#D1D5DB' }]}>
+                  {col ? ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][col.date.getDay()] : '·'}
+                </Text>
               </View>
             ))}
           </View>
@@ -694,15 +752,22 @@ export default function HomeScreen() {
                   <View style={s4.hourCell}>
                     <Text style={s4.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
                   </View>
-                  {row.map((v, ci) => {
+                  {visibleColumns.map((col, vi) => {
+                    if (!col) {
+                      return (
+                        <View key={vi} style={[s4.heatCell, { backgroundColor: '#F3F4F6' }]}>
+                          <Text style={[s4.cellLabel, { color: '#D1D5DB' }]}>—</Text>
+                        </View>
+                      );
+                    }
+                    const absCi = safePage * PAGE_SIZE + vi;
+                    const v = modifiedHeatmap[ri]?.[absCi] ?? 4;
                     return (
                       <TouchableOpacity
-                        key={ci}
-                        style={[s4.heatCell, {
-                          backgroundColor: CELL_COLORS[v],
-                        }]}
+                        key={vi}
+                        style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
                         onPress={() => {
-                          setModalDay(formatCellDay(ci));
+                          setModalDay(formatCellDay(absCi));
                           setModalTime(formatCellTime(ri));
                           setShowModal(true);
                         }}
@@ -1413,7 +1478,10 @@ const s4 = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
-    paddingHorizontal: 18,
+    paddingTop: 4,
+    paddingBottom: 8,
+    paddingLeft: 8,
+    paddingRight: 17,
   },
   heatGridScroll: {
     flex: 1,
@@ -1445,13 +1513,13 @@ const s4 = StyleSheet.create({
     color: '#6B7280',
   },
   heatGrid: {
-    gap: 4,
-    paddingBottom: 12,
+    gap: 3,
+    paddingBottom: 0,
   },
   heatRow: {
     flexDirection: 'row',
-    gap: 4,
-    height: 32,
+    gap: 3,
+    height: 68,
   },
   hourCell: {
     width: 38,
@@ -1466,6 +1534,7 @@ const s4 = StyleSheet.create({
   },
   heatCell: {
     flex: 1,
+    height: 68,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1473,6 +1542,26 @@ const s4 = StyleSheet.create({
   cellLabel: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingVertical: 0,
+  },
+  pageArrow: {
+    fontSize: 18,
+    color: '#5B4FDB',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  pageText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    minWidth: 36,
+    textAlign: 'center',
   },
   legend: {
     flexDirection: 'row',
@@ -1568,7 +1657,10 @@ const s5 = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    padding: 18,
+    paddingTop: 4,
+    paddingBottom: 8,
+    paddingLeft: 8,
+    paddingRight: 17,
     marginBottom: 12,
     borderWidth: 1.5,
   },
@@ -1802,31 +1894,45 @@ const s7 = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
+    paddingTop: 4,
+    paddingBottom: 8,
+    paddingLeft: 8,
+    paddingRight: 17,
+  },
+  gridScoreRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 2,
+  },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   gridHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 4,
     marginBottom: 6,
-    paddingHorizontal: 18,
   },
   dayCell: {
     flex: 1,
     alignItems: 'center',
   },
   dayLabel: {
-    fontSize: 13,
+    textAlign: 'center',
+    fontSize: 14,
     fontWeight: '700',
     color: '#6B7280',
   },
   heatGrid: {
-    gap: 4,
-    paddingBottom: 8,
+    gap: 3,
+    paddingBottom: 0,
   },
   heatRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 30,
+    gap: 3,
+    height: 68,
   },
   hourCell: {
     width: 38,
@@ -1840,7 +1946,7 @@ const s7 = StyleSheet.create({
   },
   heatCell: {
     flex: 1,
-    height: 26,
+    height: 68,
     borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -1850,6 +1956,26 @@ const s7 = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
     fontWeight: '700',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingVertical: 0,
+  },
+  pageArrow: {
+    fontSize: 18,
+    color: '#5B4FDB',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  pageText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    minWidth: 36,
+    textAlign: 'center',
   },
   legend: {
     flexDirection: 'row',
