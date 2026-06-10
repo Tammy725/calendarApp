@@ -57,6 +57,15 @@ const STATUS_TEXT: Record<string, string> = {
   invitado: 'invitado',
 };
 
+const NAV_STEPS = [
+  { key: 'crear', label: 'Plan', icon: '📋' },
+  { key: 'invitar', label: 'Invitar', icon: '👥' },
+  { key: 'conectar', label: 'Agenda', icon: '📅' },
+  { key: 'heatmap', label: 'Horarios', icon: '⏰' },
+  { key: 'confirmado', label: 'Listo', icon: '✨' },
+];
+const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
+
 function TopNav({ title, onBack }: { title: string; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   return (
@@ -97,6 +106,25 @@ export default function HomeScreen() {
   const [joining, setJoining] = useState(false);
 
   const fetchedRef = useRef(false);
+  const calendarConnected = useRef(false);
+
+  const navCompleted: boolean[] = (() => {
+    const c = [false, false, false, false, false];
+    if (planName && fromDate && toDate) c[0] = true;
+    if (roomCode) c[1] = true;
+    if (calendarConnected.current) c[2] = true;
+    if (confirmedDay) c[3] = true;
+    if (confirmedDay) c[4] = true;
+    return c;
+  })();
+
+  function navigateToStep(key: string) {
+    const idx = NAV_STEPS.findIndex(s => s.key === key);
+    if (idx === -1) return;
+    if (idx === 0 || navCompleted[idx - 1] || key === screen) {
+      setScreen(key as 'crear' | 'invitar' | 'conectar' | 'heatmap' | 'confirmado' | 'blockout' | 'mejores' | 'inicio' | 'join');
+    }
+  }
 
   const [page, setPage] = useState(0);
 
@@ -1014,9 +1042,39 @@ export default function HomeScreen() {
     );
   }
 
+  const navBar = MAIN_SCREENS.has(screen) && (
+    <View style={navStyle.bar}>
+      {NAV_STEPS.map((step, i) => {
+        const isCurrent = step.key === screen;
+        const isDone = navCompleted[i];
+        const canGo = i === 0 || navCompleted[i - 1] || isCurrent;
+        return (
+          <TouchableOpacity
+            key={step.key}
+            style={navStyle.item}
+            activeOpacity={canGo ? 0.6 : 1}
+            onPress={() => canGo && navigateToStep(step.key)}
+          >
+            <View style={[navStyle.dot, isCurrent && navStyle.dotCurrent, isDone && !isCurrent && navStyle.dotDone]}>
+              <Text style={[navStyle.dotIcon, isCurrent && navStyle.dotIconCurrent, isDone && !isCurrent && navStyle.dotIconDone]}>
+                {isDone ? '✓' : step.icon}
+              </Text>
+            </View>
+            <Text style={[navStyle.label, isCurrent && navStyle.labelCurrent, !canGo && navStyle.labelMuted]}>
+              {step.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
   return (
-    <>
-      {content}
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        {content}
+      </View>
+      {navBar}
       <Modal
         visible={showModal}
         transparent
@@ -1072,6 +1130,7 @@ export default function HomeScreen() {
               style={{ backgroundColor: '#5B4FDB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 64, alignItems: 'center' }}
               onPress={() => {
                 setShowConnectedModal(false);
+                calendarConnected.current = true;
                 setScreen('heatmap');
               }}
             >
@@ -1080,7 +1139,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
@@ -1110,6 +1169,60 @@ const navStyle = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#111827',
+  },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-evenly',
+    paddingTop: 10,
+    paddingBottom: 28,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 0.5,
+    borderTopColor: '#E5E7EB',
+  },
+  item: {
+    alignItems: 'center',
+    gap: 4,
+    width: 56,
+  },
+  dot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotCurrent: {
+    backgroundColor: '#EEF2FF',
+  },
+  dotDone: {
+    backgroundColor: '#D1FAE5',
+  },
+  dotIcon: {
+    fontSize: 14,
+  },
+  dotIconCurrent: {
+    fontSize: 14,
+  },
+  dotIconDone: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  label: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  labelCurrent: {
+    color: '#5B4FDB',
+    fontWeight: '700',
+  },
+  labelMuted: {
+    color: '#D1D5DB',
   },
 });
 
