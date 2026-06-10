@@ -51,6 +51,15 @@ const OPTIONS = [
   { day: 'Miércoles 15 ene', time: '5:00 – 7:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
 ];
 
+const NAV_STEPS = [
+  { key: 'crear', label: 'Plan', icon: '📋' },
+  { key: 'invitar', label: 'Invitar', icon: '👥' },
+  { key: 'conectar', label: 'Agenda', icon: '📅' },
+  { key: 'heatmap', label: 'Horarios', icon: '⏰' },
+  { key: 'confirmado', label: 'Listo', icon: '✨' },
+];
+const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
+
 const STATUS_TEXT: Record<string, string> = {
   conectado: 'conectado ✓',
   esperando: 'esperando…',
@@ -97,6 +106,25 @@ export default function HomeScreen() {
   const [joining, setJoining] = useState(false);
 
   const fetchedRef = useRef(false);
+  const calendarConnected = useRef(false);
+
+  const navCompleted: boolean[] = (() => {
+    const c = [false, false, false, false, false];
+    if (planName && fromDate && toDate) c[0] = true;
+    if (roomCode) c[1] = true;
+    if (calendarConnected.current) c[2] = true;
+    if (confirmedDay) c[3] = true;
+    if (confirmedDay) c[4] = true;
+    return c;
+  })();
+
+  function navigateToStep(key: string) {
+    const idx = NAV_STEPS.findIndex(s => s.key === key);
+    if (idx === -1) return;
+    if (idx === 0 || navCompleted[idx - 1] || key === screen) {
+      setScreen(key as 'crear' | 'invitar' | 'conectar' | 'heatmap' | 'confirmado' | 'blockout' | 'mejores' | 'inicio' | 'join');
+    }
+  }
 
   const [page, setPage] = useState(0);
 
@@ -792,78 +820,130 @@ export default function HomeScreen() {
               <Text style={[s4.pageArrow, safePage >= totalPages - 1 && { opacity: 0.3 }]}>{'▶'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={s4.gridScoreRow}>
+          <View style={{ flexDirection: 'row', marginBottom: 2 }}>
             <View style={{ width: 38 }} />
             {visibleColumns.map((col, ci) => (
-              <View key={ci} style={s4.dayCell}>
-                <Text style={[s4.scoreText, !col && { color: '#D1D5DB' }]}>
+              <View key={ci} style={{ flex: 1, marginHorizontal: 1.5 }}>
+                <Text style={[s4.scoreText, { textAlign: 'center' }, !col && { color: '#D1D5DB' }]}>
                   {col ? `${col.date.getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][col.date.getMonth()]}` : '—'}
                 </Text>
               </View>
             ))}
           </View>
-          <View style={s4.gridHeader}>
+          <View style={{ flexDirection: 'row', marginBottom: 6 }}>
             <View style={{ width: 38 }} />
             {visibleColumns.map((col, ci) => (
-              <View key={ci} style={s4.dayCell}>
-                <Text style={[s4.dayLabel, !col && { color: '#D1D5DB' }]}>
+              <View key={ci} style={{ flex: 1, marginHorizontal: 1.5 }}>
+                <Text style={[s4.dayLabel, { textAlign: 'center' }, !col && { color: '#D1D5DB' }]}>
                   {col ? ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][col.date.getDay()] : '·'}
                 </Text>
               </View>
             ))}
           </View>
-          <ScrollView style={s4.heatGridScroll}>
-            <View style={s4.heatGrid}>
-              {modifiedHeatmap.map((row, ri) => (
-                <View key={ri} style={s4.heatRow}>
-                  <View style={s4.hourCell}>
+          <ScrollView style={s4.heatGridScroll} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', height: 24 * 64 }}>
+              <View style={{ width: 38, paddingTop: 0 }}>
+                {HOURS.map((_, ri) => (
+                  <View key={ri} style={{ height: 64, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 6 }}>
                     <Text style={s4.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
                   </View>
-                  {visibleColumns.map((col, vi) => {
-                    if (!col) {
-                      return (
-                        <View key={vi} style={[s4.heatCell, { backgroundColor: '#F3F4F6' }]}>
-                          <Text style={[s4.cellLabel, { color: '#D1D5DB' }]}>—</Text>
-                        </View>
-                      );
-                    }
-                    const absCi = safePage * PAGE_SIZE + vi;
-                    const v = modifiedHeatmap[ri]?.[absCi] ?? 4;
-                    return (
-                      <TouchableOpacity
-                        key={vi}
-                        style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
-                        onPress={() => {
-                          setModalDay(formatCellDay(absCi));
-                          setModalTime(formatCellTime(ri));
-                          setShowModal(true);
-                        }}
-                      >
-                        <Text style={[s4.cellLabel, {
-                          color: v >= 3 ? '#065F46' : v === 2 ? '#92400E' : '#9CA3AF',
-                        }]}>
-                          {CELL_LABELS[v]}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))}
+                ))}
+              </View>
+              {visibleColumns.map((col, vi) => {
+                if (!col) {
+                  return (
+                    <View key={vi} style={{ flex: 1, marginHorizontal: 2.5 }}>
+                      <View style={{ flex: 1, backgroundColor: '#F9FAFB', borderRadius: 10, overflow: 'hidden', opacity: 0.5 }}>
+                        {DISPLAY_HOURS.map((_, ri) => (
+                          <View key={ri} style={{ height: 64, borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' }} />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                }
+                const absCi = safePage * PAGE_SIZE + vi;
+                const colData = HOURS.map((_, ri) => modifiedHeatmap[ri]?.[absCi] ?? 4);
+                const mergedBlocks: { startRi: number; height: number; v: number }[] = [];
+                let i = 0;
+                while (i < 24) {
+                  const v = colData[i];
+                  if (v >= 4) { i++; continue; }
+                  let j = i + 1;
+                  while (j < 24 && colData[j] === v) j++;
+                  mergedBlocks.push({ startRi: i, height: j - i, v });
+                  i = j;
+                }
+                return (
+                  <View key={vi} style={{ flex: 1, marginHorizontal: 2.5 }}>
+                    <View style={{ flex: 1, backgroundColor: 'rgba(16, 185, 129, 0.04)', borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#A7F3D0', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+                      {DISPLAY_HOURS.map((_, ri) => (
+                        <View key={ri} style={{ position: 'absolute', left: 0, right: 0, top: ri * 64, height: 1, backgroundColor: 'rgba(16, 185, 129, 0.06)' }} />
+                      ))}
+                      {mergedBlocks.map((block, bi) => {
+                        const topRadius = bi === 0 || (mergedBlocks[bi-1] && mergedBlocks[bi-1].startRi + mergedBlocks[bi-1].height !== block.startRi) ? 6 : 0;
+                        const bottomRadius = bi === mergedBlocks.length - 1 || (mergedBlocks[bi+1] && mergedBlocks[bi+1].startRi !== block.startRi + block.height) ? 6 : 0;
+                        return (
+                          <View
+                            key={bi}
+                            style={{
+                              position: 'absolute', left: 3, right: 3,
+                              top: block.startRi * 64,
+                              height: block.height * 64,
+                              backgroundColor: CELL_COLORS[block.v],
+                              borderTopLeftRadius: topRadius, borderTopRightRadius: topRadius,
+                              borderBottomLeftRadius: bottomRadius, borderBottomRightRadius: bottomRadius,
+                              justifyContent: 'center', alignItems: 'center',
+                              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
+                            }}
+                          >
+                            <Text style={{
+                              fontSize: 10, fontWeight: '700',
+                              color: block.v >= 3 ? '#065F46' : block.v === 2 ? '#92400E' : '#fff',
+                            }}>
+                              {CELL_LABELS[block.v]}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                      {DISPLAY_HOURS.map((_, ri) => (
+                        <TouchableOpacity
+                          key={ri}
+                          style={{ height: 64 }}
+                          onPress={() => {
+                            setModalDay(formatCellDay(absCi));
+                            setModalTime(formatCellTime(ri));
+                            setShowModal(true);
+                          }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           </ScrollView>
         </View>
         <View style={s4.legend}>
-          {[
-            { color: '#10B981', label: '4/4' },
-            { color: '#D1FAE5', label: '3/4' },
-            { color: '#FEF3C7', label: '2/4' },
-            { color: '#E5E7EB', label: '0/4' },
-          ].map((l) => (
-            <View key={l.label} style={s4.legendItem}>
-              <View style={[s4.legendDot, { backgroundColor: l.color }]} />
-              <Text style={s4.legendLabel}>{l.label}</Text>
-            </View>
-          ))}
+          <View style={s4.legendItem}>
+            <View style={[s4.legendDot, { backgroundColor: 'rgba(16, 185, 129, 0.04)', borderWidth: 1, borderColor: '#A7F3D0' }]} />
+            <Text style={s4.legendLabel}>Libre</Text>
+          </View>
+          <View style={s4.legendItem}>
+            <View style={[s4.legendDot, { backgroundColor: '#D1FAE5' }]} />
+            <Text style={s4.legendLabel}>1/4</Text>
+          </View>
+          <View style={s4.legendItem}>
+            <View style={[s4.legendDot, { backgroundColor: '#FEF3C7' }]} />
+            <Text style={s4.legendLabel}>2/4</Text>
+          </View>
+          <View style={s4.legendItem}>
+            <View style={[s4.legendDot, { backgroundColor: '#F97316' }]} />
+            <Text style={s4.legendLabel}>3/4</Text>
+          </View>
+          <View style={s4.legendItem}>
+            <View style={[s4.legendDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={s4.legendLabel}>Ocupado</Text>
+          </View>
         </View>
         <TouchableOpacity style={s4.editBlockBtn} onPress={() => setScreen('blockout')}>
           <Text style={s4.editBlockBtnText}>
@@ -1014,9 +1094,39 @@ export default function HomeScreen() {
     );
   }
 
+  const navBar = MAIN_SCREENS.has(screen) && (
+    <View style={navStyle.bar}>
+      {NAV_STEPS.map((step, i) => {
+        const isCurrent = step.key === screen;
+        const isDone = navCompleted[i];
+        const canGo = i === 0 || navCompleted[i - 1] || isCurrent;
+        return (
+          <TouchableOpacity
+            key={step.key}
+            style={navStyle.item}
+            activeOpacity={canGo ? 0.6 : 1}
+            onPress={() => canGo && navigateToStep(step.key)}
+          >
+            <View style={[navStyle.dot, isCurrent && navStyle.dotCurrent, isDone && !isCurrent && navStyle.dotDone]}>
+              <Text style={[navStyle.dotIcon, isCurrent && navStyle.dotIconCurrent, isDone && !isCurrent && navStyle.dotIconDone]}>
+                {isDone ? '✓' : step.icon}
+              </Text>
+            </View>
+            <Text style={[navStyle.label, isCurrent && navStyle.labelCurrent, !canGo && navStyle.labelMuted]}>
+              {step.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
   return (
-    <>
-      {content}
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        {content}
+      </View>
+      {navBar}
       <Modal
         visible={showModal}
         transparent
@@ -1072,6 +1182,7 @@ export default function HomeScreen() {
               style={{ backgroundColor: '#5B4FDB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 64, alignItems: 'center' }}
               onPress={() => {
                 setShowConnectedModal(false);
+                calendarConnected.current = true;
                 setScreen('heatmap');
               }}
             >
@@ -1080,7 +1191,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
@@ -1110,6 +1221,60 @@ const navStyle = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#111827',
+  },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-evenly',
+    paddingTop: 10,
+    paddingBottom: 28,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 0.5,
+    borderTopColor: '#E5E7EB',
+  },
+  item: {
+    alignItems: 'center',
+    gap: 4,
+    width: 56,
+  },
+  dot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotCurrent: {
+    backgroundColor: '#EEF2FF',
+  },
+  dotDone: {
+    backgroundColor: '#D1FAE5',
+  },
+  dotIcon: {
+    fontSize: 14,
+  },
+  dotIconCurrent: {
+    fontSize: 14,
+  },
+  dotIconDone: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  label: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  labelCurrent: {
+    color: '#5B4FDB',
+    fontWeight: '700',
+  },
+  labelMuted: {
+    color: '#D1D5DB',
   },
 });
 
@@ -1586,9 +1751,9 @@ const s4 = StyleSheet.create({
     marginBottom: 2,
   },
   scoreText: {
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
   },
 
   gridHeader: {
@@ -1622,9 +1787,9 @@ const s4 = StyleSheet.create({
     paddingRight: 4,
   },
   hourLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontWeight: '600',
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   heatCell: {
     flex: 1,
