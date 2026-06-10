@@ -91,6 +91,7 @@ export default function HomeScreen() {
   const [modalTime, setModalTime] = useState('');
 
   const [roomCode, setRoomCode] = useState('');
+  const [showConnectedModal, setShowConnectedModal] = useState(false);
   const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number }[]>([]);
   const [joinInput, setJoinInput] = useState('');
   const [joining, setJoining] = useState(false);
@@ -584,9 +585,11 @@ export default function HomeScreen() {
         </View>
         <View style={s3.bottomBtns}>
           <TouchableOpacity style={s3.googleBtn} onPress={async () => {
-            await fetchDeviceCalendarEvents();
-            Alert.alert('✅ Conectado', 'Calendario sincronizado correctamente');
-            setScreen('heatmap');
+            const { status } = await Calendar.requestCalendarPermissionsAsync();
+            if (status === 'granted') {
+              await fetchDeviceCalendarEvents();
+              setShowConnectedModal(true);
+            }
           }}>
             <Text style={{ fontSize: 14 }}>📆</Text>
             <Text style={s3.googleText}> Conectar calendario</Text>
@@ -1047,6 +1050,33 @@ export default function HomeScreen() {
                 <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showConnectedModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConnectedModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 28, padding: 28, alignItems: 'center', width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 40, elevation: 20 }}>
+            <View style={{ width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, backgroundColor: '#F5F3FF', shadowColor: '#5B4FDB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 }}>
+              <Text style={{ fontSize: 24 }}>📅</Text>
+            </View>
+            <Text style={{ fontSize: 19, fontWeight: '800', color: '#111827', marginBottom: 6, letterSpacing: -0.3 }}>Calendario conectado</Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 24, paddingHorizontal: 4 }}>
+              Tus eventos se sincronizaron correctamente
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#5B4FDB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 64, alignItems: 'center' }}
+              onPress={() => {
+                setShowConnectedModal(false);
+                setScreen('heatmap');
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: 0.3 }}>Ver disponibilidad</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1680,7 +1710,7 @@ const s4 = StyleSheet.create({
 const s5 = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8F9FF',
   },
   body: {
     flex: 1,
@@ -1722,18 +1752,23 @@ const s5 = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
-    paddingLeft: 8,
-    paddingRight: 17,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
     marginBottom: 12,
     borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cardDay: {
     fontSize: 17,
@@ -1742,13 +1777,14 @@ const s5 = StyleSheet.create({
     marginBottom: 3,
   },
   cardTime: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
   },
   badge: {
     borderRadius: 99,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   badgeText: {
     fontSize: 14,
@@ -1764,22 +1800,27 @@ const s5 = StyleSheet.create({
     flexDirection: 'row',
   },
   avaSm: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   avaSmText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
   chooseBtn: {
     borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
   chooseBtnText: {
     fontSize: 15,
