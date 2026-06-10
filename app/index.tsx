@@ -101,7 +101,6 @@ export default function HomeScreen() {
   const [modalTime, setModalTime] = useState('');
 
   const [roomCode, setRoomCode] = useState('');
-  const [showConnectedModal, setShowConnectedModal] = useState(false);
   const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number; groupSize: number }[]>([]);
   const [joinInput, setJoinInput] = useState('');
   const [joining, setJoining] = useState(false);
@@ -109,6 +108,16 @@ export default function HomeScreen() {
 
   const fetchedRef = useRef(false);
   const calendarConnected = useRef(false);
+  const pendingAlert = useRef(false);
+
+  useEffect(() => {
+    if (screen === 'heatmap' && pendingAlert.current) {
+      pendingAlert.current = false;
+      Alert.alert('Calendario conectado', 'Tus eventos se sincronizaron correctamente', [
+        { text: 'Ver disponibilidad' },
+      ]);
+    }
+  }, [screen]);
 
   const navCompleted: boolean[] = (() => {
     return NAV_STEPS.map(s => completedSteps.includes(s.key));
@@ -459,18 +468,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={s1.sectionLabel}>¿Cuántos son?</Text>
-          <View style={s1.durRow}>
-            {[2,3,4,5,6].map(n => (
-              <TouchableOpacity
-                key={n}
-                style={[s1.durOpt, groupSize === n && s1.durOptSel]}
-                onPress={() => setGroupSize(n)}
-              >
-                <Text style={[s1.durOptText, groupSize === n && s1.durOptTextSel]}>{n}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </ScrollView>
         {showDatePicker && (
           <View style={{ alignItems: 'center' }}>
@@ -629,7 +626,10 @@ export default function HomeScreen() {
             const { status } = await Calendar.requestCalendarPermissionsAsync();
             if (status === 'granted') {
               await fetchDeviceCalendarEvents();
-              setShowConnectedModal(true);
+              calendarConnected.current = true;
+              setCompletedSteps(prev => [...prev, 'conectar']);
+              pendingAlert.current = true;
+              setScreen('heatmap');
             }
           }}>
             <Text style={{ fontSize: 14 }}>📆</Text>
@@ -1127,35 +1127,6 @@ export default function HomeScreen() {
                 <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-      <Modal
-        visible={showConnectedModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowConnectedModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 28, padding: 28, alignItems: 'center', width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 40, elevation: 20 }}>
-            <View style={{ width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, backgroundColor: '#F5F3FF', shadowColor: '#5B4FDB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 }}>
-              <Text style={{ fontSize: 24 }}>📅</Text>
-            </View>
-            <Text style={{ fontSize: 19, fontWeight: '800', color: '#111827', marginBottom: 6, letterSpacing: -0.3 }}>Calendario conectado</Text>
-            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 24, paddingHorizontal: 4 }}>
-              Tus eventos se sincronizaron correctamente
-            </Text>
-            <TouchableOpacity
-              style={{ backgroundColor: '#5B4FDB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 64, alignItems: 'center' }}
-              onPress={() => {
-                setShowConnectedModal(false);
-                calendarConnected.current = true;
-                setCompletedSteps(prev => [...prev, 'conectar']);
-                setScreen('heatmap');
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: 0.3 }}>Ver disponibilidad</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
