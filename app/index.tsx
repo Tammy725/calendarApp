@@ -1730,13 +1730,14 @@ const s4 = StyleSheet.create({
   heatRow: {
     flexDirection: 'row',
     gap: 3,
-    height: 68,
+    height: 32,
   },
   hourCell: {
     width: 38,
     alignItems: 'flex-end',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingRight: 4,
+    paddingTop: 2,
   },
   hourLabel: {
     fontSize: 10,
@@ -1745,7 +1746,7 @@ const s4 = StyleSheet.create({
   },
   heatCell: {
     flex: 1,
-    height: 68,
+    height: 32,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2153,14 +2154,15 @@ const s7 = StyleSheet.create({
   },
   heatRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 3,
-    height: 68,
+    height: 32,
   },
   hourCell: {
     width: 38,
     alignItems: 'flex-end',
     paddingRight: 4,
+    paddingTop: 2,
   },
   hourLabel: {
     fontSize: 10,
@@ -2169,7 +2171,7 @@ const s7 = StyleSheet.create({
   },
   heatCell: {
     flex: 1,
-    height: 68,
+    height: 32,
     borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
