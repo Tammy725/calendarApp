@@ -60,9 +60,9 @@ const STATUS_TEXT: Record<string, string> = {
 const NAV_STEPS = [
   { key: 'crear', label: 'Plan', icon: '📋' },
   { key: 'invitar', label: 'Invitar', icon: '👥' },
-  { key: 'conectar', label: 'Agenda', icon: '📅' },
-  { key: 'heatmap', label: 'Horarios', icon: '⏰' },
-  { key: 'confirmado', label: 'Listo', icon: '✨' },
+  { key: 'conectar', label: 'Conectar', icon: '📅' },
+  { key: 'heatmap', label: 'Calendario', icon: '⏰' },
+  { key: 'confirmado', label: 'Resumen', icon: '📝' },
 ];
 const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
 
@@ -89,6 +89,7 @@ export default function HomeScreen() {
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(0);
+  const [groupSize, setGroupSize] = useState(2);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [tempDate, setTempDate] = useState(new Date());
   const pickedDateRef = useRef(new Date());
@@ -101,27 +102,24 @@ export default function HomeScreen() {
 
   const [roomCode, setRoomCode] = useState('');
   const [showConnectedModal, setShowConnectedModal] = useState(false);
-  const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number }[]>([]);
+  const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number; groupSize: number }[]>([]);
   const [joinInput, setJoinInput] = useState('');
   const [joining, setJoining] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
 
   const fetchedRef = useRef(false);
   const calendarConnected = useRef(false);
 
   const navCompleted: boolean[] = (() => {
-    const c = [false, false, false, false, false];
-    if (planName && fromDate && toDate) c[0] = true;
-    if (roomCode) c[1] = true;
-    if (calendarConnected.current) c[2] = true;
-    if (confirmedDay) c[3] = true;
-    if (confirmedDay) c[4] = true;
-    return c;
+    return NAV_STEPS.map(s => completedSteps.includes(s.key));
   })();
 
   function navigateToStep(key: string) {
     const idx = NAV_STEPS.findIndex(s => s.key === key);
     if (idx === -1) return;
-    if (idx === 0 || navCompleted[idx - 1] || key === screen) {
+    const prereq = [true, !!(planName && fromDate && toDate), !!roomCode, !!calendarConnected.current, !!confirmedDay];
+    const canGo = idx === 0 || (idx > 0 && prereq.slice(1, idx + 1).every(Boolean)) || key === screen;
+    if (canGo) {
       setScreen(key as 'crear' | 'invitar' | 'conectar' | 'heatmap' | 'confirmado' | 'blockout' | 'mejores' | 'inicio' | 'join');
     }
   }
@@ -461,6 +459,18 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <Text style={s1.sectionLabel}>¿Cuántos son?</Text>
+          <View style={s1.durRow}>
+            {[2,3,4,5,6].map(n => (
+              <TouchableOpacity
+                key={n}
+                style={[s1.durOpt, groupSize === n && s1.durOptSel]}
+                onPress={() => setGroupSize(n)}
+              >
+                <Text style={[s1.durOptText, groupSize === n && s1.durOptTextSel]}>{n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </ScrollView>
         {showDatePicker && (
           <View style={{ alignItems: 'center' }}>
@@ -500,7 +510,8 @@ export default function HomeScreen() {
             setScreen('invitar');
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             setRoomCode(code);
-            setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx }]);
+            setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx, groupSize }]);
+            setCompletedSteps(prev => [...prev, 'crear']);
           }}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
@@ -516,6 +527,7 @@ export default function HomeScreen() {
         <TopNav title="Invitar" onBack={() => setScreen('crear')} />
         <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent}>
           <Text style={s2.heading}>Invita a tu grupo 👥</Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
           <View style={s2.linkCard}>
             <Text style={s2.linkCardLabel}>Código y enlace de invitación</Text>
             <View style={s2.linkRow}>
@@ -534,6 +546,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 12, marginTop: 8 }}>Comparte el código con tus amigos:</Text>
           <View style={s2.shareRow}>
             {[
               { icon: '💬', label: 'WhatsApp', isWa: true },
@@ -558,7 +571,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={s2.peopleTitle}>Personas unidas · 2/5</Text>
+          <Text style={s2.peopleTitle}>Personas unidas · 1/{groupSize}</Text>
           {PEOPLE.slice(0, -1).map((p, i) => (
             <View key={p.name} style={s2.personRow}>
               <View style={[s2.avatar, { backgroundColor: p.bg }]}>
@@ -574,8 +587,8 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
         <View style={s2.bottom}>
-          <TouchableOpacity style={s2.nextBtn} onPress={() => setScreen('conectar')}>
-            <Text style={s2.nextBtnText}>Ya están todos →</Text>
+          <TouchableOpacity style={s2.nextBtn} onPress={() => { setScreen('conectar'); setCompletedSteps(prev => [...prev, 'invitar']); }}>
+            <Text style={s2.nextBtnText}>Siguiente →</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -667,6 +680,7 @@ export default function HomeScreen() {
                 setFromDate(match.fromDate);
                 setToDate(match.toDate);
                 setDurationIdx(match.durationIdx);
+                setGroupSize(match.groupSize);
                 setRoomCode(match.code);
                 setJoining(false);
                 setJoinInput('');
@@ -1047,18 +1061,22 @@ export default function HomeScreen() {
       {NAV_STEPS.map((step, i) => {
         const isCurrent = step.key === screen;
         const isDone = navCompleted[i];
-        const canGo = i === 0 || navCompleted[i - 1] || isCurrent;
+        const prereq = [true, !!(planName && fromDate && toDate), !!roomCode, !!calendarConnected.current, !!confirmedDay];
+        const canGo = i === 0 || (i > 0 && prereq.slice(1, i + 1).every(Boolean)) || isCurrent;
         return (
           <TouchableOpacity
             key={step.key}
-            style={navStyle.item}
+            style={[navStyle.item, !canGo && { opacity: 0.35 }]}
             activeOpacity={canGo ? 0.6 : 1}
-            onPress={() => canGo && navigateToStep(step.key)}
+            onPress={() => { if (canGo) navigateToStep(step.key); }}
           >
             <View style={[navStyle.dot, isCurrent && navStyle.dotCurrent, isDone && !isCurrent && navStyle.dotDone]}>
-              <Text style={[navStyle.dotIcon, isCurrent && navStyle.dotIconCurrent, isDone && !isCurrent && navStyle.dotIconDone]}>
-                {isDone ? '✓' : step.icon}
-              </Text>
+              <Text style={navStyle.dotIcon}>{step.icon}</Text>
+              {isDone && (
+                <View style={navStyle.checkBadge}>
+                  <Text style={navStyle.checkText}>✓</Text>
+                </View>
+              )}
             </View>
             <Text style={[navStyle.label, isCurrent && navStyle.labelCurrent, !canGo && navStyle.labelMuted]}>
               {step.label}
@@ -1102,6 +1120,7 @@ export default function HomeScreen() {
                   setConfirmedDay(modalDay);
                   setConfirmedTime(modalTime);
                   setShowModal(false);
+                  setCompletedSteps(prev => [...prev, 'heatmap']);
                   setScreen('confirmado');
                 }}
               >
@@ -1131,6 +1150,7 @@ export default function HomeScreen() {
               onPress={() => {
                 setShowConnectedModal(false);
                 calendarConnected.current = true;
+                setCompletedSteps(prev => [...prev, 'conectar']);
                 setScreen('heatmap');
               }}
             >
@@ -1203,13 +1223,26 @@ const navStyle = StyleSheet.create({
   dotIcon: {
     fontSize: 14,
   },
-  dotIconCurrent: {
-    fontSize: 14,
+  checkBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  dotIconDone: {
-    fontSize: 13,
-    color: '#10B981',
-    fontWeight: '700',
+  checkText: {
+    fontSize: 9,
+    color: '#fff',
+    fontWeight: '800',
   },
   label: {
     fontSize: 10,
