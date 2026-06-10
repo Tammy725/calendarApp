@@ -601,10 +601,12 @@ export default function HomeScreen() {
 
   if (screen === 'join') {
     content = (
-      <View style={s2.wrap}>
+      <View style={[s2.wrap, { justifyContent: 'center', paddingBottom: 40 }]}>
         <StatusBar style="dark" />
-        <TopNav title="Unirse" onBack={() => setScreen('inicio')} />
-        <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+          <TopNav title="Unirse" onBack={() => setScreen('inicio')} />
+        </View>
+        <View style={{ padding: 24, gap: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
           <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa el código que te compartieron</Text>
           <TextInput
