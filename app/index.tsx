@@ -69,7 +69,7 @@ const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blocko
 function TopNav({ title, onBack }: { title: string; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[navStyle.wrap, { paddingTop: insets.top + 8 }]}>
+    <View style={[navStyle.wrap, { paddingTop: insets.top }]}>
       <TouchableOpacity
         onPress={onBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -1391,7 +1391,7 @@ const s1 = StyleSheet.create({
   },
   bottom: {
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: 12,
   },
   nextBtn: {
     backgroundColor: '#5B4FDB',
@@ -1537,7 +1537,7 @@ const s2 = StyleSheet.create({
   },
   bottom: {
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: 12,
   },
   nextBtn: {
     backgroundColor: '#5B4FDB',
@@ -1610,7 +1610,7 @@ const s3 = StyleSheet.create({
   bottomBtns: {
     width: '100%',
     paddingHorizontal: 24,
-    paddingBottom: 36,
+    paddingBottom: 12,
   },
   googleBtn: {
     flexDirection: 'row',
@@ -1870,7 +1870,7 @@ const s5 = StyleSheet.create({
   card: {
     borderRadius: 20,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 28,
     paddingLeft: 16,
     paddingRight: 16,
     marginBottom: 12,
@@ -2065,7 +2065,7 @@ const s6 = StyleSheet.create({
   },
   bottom: {
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: 12,
     gap: 12,
   },
   gcalBtn: {
@@ -2102,7 +2102,7 @@ const s7 = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 28,
   },
   title: {
     fontSize: 22,
@@ -2118,7 +2118,7 @@ const s7 = StyleSheet.create({
   gridContainer: {
     flex: 1,
     paddingTop: 4,
-    paddingBottom: 8,
+    paddingBottom: 0,
     paddingLeft: 8,
     paddingRight: 17,
   },
@@ -2205,7 +2205,7 @@ const s7 = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: 8,
   },
   legendItem: {
     flexDirection: 'row',
@@ -2224,7 +2224,7 @@ const s7 = StyleSheet.create({
   },
   bottom: {
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: 12,
     marginTop: 'auto',
   },
   saveBtn: {
