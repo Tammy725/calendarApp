@@ -22,6 +22,13 @@ const HOURS = ['6h','7h','8h','9h','10h','11h','12h','13h','14h','15h','16h','17
 const DISPLAY_HOURS = ['6am','7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm','12am','1am','2am','3am','4am','5am'];
 const PAGE_SIZE = 5;
 
+const TIME_PERIODS = [
+  { label: 'Día', startHour: 8, endHour: 11 },
+  { label: 'Tarde', startHour: 12, endHour: 17 },
+  { label: 'Noche', startHour: 18, endHour: 24 },
+  { label: 'Todo el día', startHour: 0, endHour: 24 },
+];
+
 function makeGrid(cols: number): number[][] {
   return Array.from({ length: 24 }, () => Array(cols).fill(4));
 }
@@ -89,6 +96,12 @@ export default function HomeScreen() {
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(0);
+  const [periodIdx, setPeriodIdx] = useState(0);
+  const [customStartHour, setCustomStartHour] = useState(8);
+  const [customEndHour, setCustomEndHour] = useState(11);
+  const desdeCenterRef = useRef(8);
+  const hastaCenterRef = useRef(11);
+  const [, forceRender] = useState(0);
   const [groupSize, setGroupSize] = useState(2);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
   const [tempDate, setTempDate] = useState(new Date());
@@ -101,7 +114,7 @@ export default function HomeScreen() {
   const [modalTime, setModalTime] = useState('');
 
   const [roomCode, setRoomCode] = useState('');
-  const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number; groupSize: number }[]>([]);
+  const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number; periodIdx: number; customStartHour: number; customEndHour: number; groupSize: number }[]>([]);
   const [joinInput, setJoinInput] = useState('');
   const [joining, setJoining] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
@@ -109,6 +122,8 @@ export default function HomeScreen() {
   const fetchedRef = useRef(false);
   const calendarConnected = useRef(false);
   const pendingAlert = useRef(false);
+  const desdeRef = useRef<ScrollView>(null);
+  const hastaRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (screen === 'heatmap' && pendingAlert.current) {
@@ -118,6 +133,15 @@ export default function HomeScreen() {
       ]);
     }
   }, [screen]);
+
+  useEffect(() => {
+    if (screen !== 'crear') return;
+    desdeCenterRef.current = customStartHour;
+    hastaCenterRef.current = customEndHour;
+    forceRender(n => n + 1);
+    desdeRef.current?.scrollTo({ y: customStartHour * 36, animated: false });
+    hastaRef.current?.scrollTo({ y: customEndHour * 36, animated: false });
+  }, [screen, customStartHour, customEndHour]);
 
   const navCompleted: boolean[] = (() => {
     return NAV_STEPS.map(s => completedSteps.includes(s.key));
@@ -257,8 +281,6 @@ export default function HomeScreen() {
     }
   }
 
-  const durOptions = ['1h', '2h', '3h', 'Todo el día'];
-
   const MONTH_MAP: Record<string, number> = {
     'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5,
     'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11,
@@ -356,20 +378,28 @@ export default function HomeScreen() {
     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const fd = `${days[fromDate.getDay()]} ${fromDate.getDate()} ${months[fromDate.getMonth()]}`;
     const td = `${days[toDate.getDay()]} ${toDate.getDate()} ${months[toDate.getMonth()]}`;
-    return `${fd} - ${td}`;
+    return `${fd} - ${td} · ${TIME_PERIODS[periodIdx].label}`;
   }
 
   function formatCellTime(hourIdx: number): string {
     const start = parseInt(HOURS[hourIdx]);
-    const dur = parseInt(durOptions[durationIdx]) || 2;
-    const end = (start + dur) % 24;
+    const end = customEndHour;
     const fmt = (h: number) => {
       const a = h >= 12 ? 'PM' : 'AM';
       const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
       return `${h12}:00 ${a}`;
     };
-    return `${fmt(start)} – ${fmt(end)} · ${durOptions[durationIdx]}`;
+    return `${fmt(start)} – ${fmt(end)} · ${TIME_PERIODS[periodIdx].label}`;
   }
+
+  const filteredRowIndices = useMemo(() => {
+    const res: number[] = [];
+    for (let ri = 0; ri < 24; ri++) {
+      const h = parseInt(HOURS[ri]);
+      if (h >= customStartHour && h < customEndHour) res.push(ri);
+    }
+    return res;
+  }, [customStartHour, customEndHour]);
 
   let content;
   if (screen === 'inicio') {
@@ -424,14 +454,15 @@ export default function HomeScreen() {
       <View style={s1.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
-        <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent}>
+        <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent} bounces={false}>
           <Text style={s1.sectionLabel}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
           <Text style={s1.sectionLabel}>Nombre del plan</Text>
           <TextInput
             style={s1.inputActive}
             value={planName}
-            onChangeText={(t) => setPlanName(t.toUpperCase())}
+            onChangeText={setPlanName}
+            autoCapitalize="characters"
             placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
             placeholderTextColor="#9CA3AF"
           />
@@ -454,19 +485,102 @@ export default function HomeScreen() {
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s1.sectionLabel}>Duración</Text>
+          <Text style={s1.sectionLabel}>Franja horaria</Text>
           <View style={s1.durRow}>
-            {durOptions.map((d, i) => (
+            {TIME_PERIODS.map((p, i) => (
               <TouchableOpacity
-                key={d}
-                style={[s1.durOpt, durationIdx === i && s1.durOptSel]}
-                onPress={() => setDurationIdx(i)}
+                key={p.label}
+                style={[s1.durOpt, periodIdx === i && s1.durOptSel]}
+                onPress={() => {
+                  setPeriodIdx(i);
+                  setCustomStartHour(p.startHour);
+                  setCustomEndHour(p.endHour);
+                }}
               >
-                <Text style={[s1.durOptText, durationIdx === i && s1.durOptTextSel]}>
-                  {d}
+                <Text style={[s1.durOptText, periodIdx === i && s1.durOptTextSel]}>
+                  {p.label}
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+          <View style={s1.hourPickerRow}>
+            <View style={s1.hourPickerCol}>
+              <Text style={s1.hourPickerLabel}>Desde</Text>
+              <View style={s1.hourPickerFrame}>
+                <ScrollView
+                  ref={desdeRef}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={36}
+                  decelerationRate="fast"
+                  scrollEventThrottle={32}
+                  contentOffset={{ x: 0, y: customStartHour * 36 }}
+                  contentContainerStyle={s1.hourPickerContent}
+                  onScroll={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.y / 36);
+                    const h = Math.min(23, Math.max(0, idx));
+                    if (h !== desdeCenterRef.current) {
+                      desdeCenterRef.current = h;
+                      forceRender(n => n + 1);
+                    }
+                  }}
+                  onMomentumScrollEnd={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.y / 36);
+                    const h = Math.min(23, Math.max(0, idx));
+                    desdeCenterRef.current = h;
+                    if (h !== customStartHour) {
+                      setCustomStartHour(h);
+                      if (h >= customEndHour) setCustomEndHour(h + 1);
+                    }
+                  }}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <View key={i} style={s1.hourPickerItem}>
+                      <Text style={[
+                        s1.hourPickerText,
+                        i === desdeCenterRef.current && s1.hourPickerTextSel
+                      ]}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+            <View style={s1.hourPickerCol}>
+              <Text style={s1.hourPickerLabel}>Hasta</Text>
+              <View style={s1.hourPickerFrame}>
+                <ScrollView
+                  ref={hastaRef}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={36}
+                  decelerationRate="fast"
+                  scrollEventThrottle={32}
+                  contentOffset={{ x: 0, y: customEndHour * 36 }}
+                  contentContainerStyle={s1.hourPickerContent}
+                  onScroll={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.y / 36);
+                    const h = Math.min(24, Math.max(0, idx));
+                    if (h !== hastaCenterRef.current) {
+                      hastaCenterRef.current = h;
+                      forceRender(n => n + 1);
+                    }
+                  }}
+                  onMomentumScrollEnd={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.y / 36);
+                    const h = Math.min(24, Math.max(customStartHour + 1, idx));
+                    hastaCenterRef.current = h;
+                    if (h !== customEndHour) setCustomEndHour(h);
+                  }}
+                >
+                  {Array.from({ length: 25 }, (_, i) => (
+                    <View key={i} style={s1.hourPickerItem}>
+                      <Text style={[
+                        s1.hourPickerText,
+                        i === hastaCenterRef.current && s1.hourPickerTextSel
+                      ]}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : i < 24 ? `${i - 12}:00 PM` : '12:00 AM'}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
           </View>
         </ScrollView>
         {showDatePicker && (
@@ -507,7 +621,7 @@ export default function HomeScreen() {
             setScreen('invitar');
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             setRoomCode(code);
-            setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx, groupSize }]);
+            setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx, periodIdx, customStartHour, customEndHour, groupSize }]);
             setCompletedSteps(prev => [...prev, 'crear']);
           }}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
@@ -522,7 +636,7 @@ export default function HomeScreen() {
       <View style={s2.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Invitar" onBack={() => setScreen('crear')} />
-        <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent}>
+        <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent} bounces={false}>
           <Text style={s2.heading}>Invita a tu grupo 👥</Text>
           <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
           <View style={s2.linkCard}>
@@ -680,6 +794,9 @@ export default function HomeScreen() {
                 setFromDate(match.fromDate);
                 setToDate(match.toDate);
                 setDurationIdx(match.durationIdx);
+                setPeriodIdx(match.periodIdx ?? 3);
+                setCustomStartHour(match.customStartHour ?? TIME_PERIODS[match.periodIdx ?? 3].startHour);
+                setCustomEndHour(match.customEndHour ?? TIME_PERIODS[match.periodIdx ?? 3].endHour);
                 setGroupSize(match.groupSize);
                 setRoomCode(match.code);
                 setJoining(false);
@@ -743,9 +860,9 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
-          <ScrollView style={{ flex: 1 }}>
+          <ScrollView style={{ flex: 1 }} bounces={false}>
           <View style={s7.heatGrid}>
-            {HOURS.map((hr, ri) => (
+            {filteredRowIndices.map(ri => (
               <View key={ri} style={s7.heatRow}>
                 <View style={s7.hourCell}>
                   <Text style={s7.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
@@ -758,7 +875,7 @@ export default function HomeScreen() {
                       </View>
                     );
                   }
-                  const blocked = userGrid[ri]?.[ci] ?? false;
+                  const blocked = userGrid[ri]?.[safePage * PAGE_SIZE + ci] ?? false;
                   return (
                     <TouchableOpacity
                       key={ci}
@@ -766,7 +883,7 @@ export default function HomeScreen() {
                         backgroundColor: blocked ? '#DC2626' : '#F9FAFB',
                         borderColor: blocked ? '#DC2626' : '#E5E7EB',
                       }]}
-                      onPress={() => toggleUserCell(ri, ci)}
+                      onPress={() => toggleUserCell(ri, safePage * PAGE_SIZE + ci)}
                     >
                       {blocked && <Text style={s7.cellX}>✕</Text>}
                     </TouchableOpacity>
@@ -775,7 +892,7 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
-          </ScrollView>
+        </ScrollView>
         </View>
         <View style={s7.legend}>
           <View style={s7.legendItem}>
@@ -854,9 +971,9 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
-          <ScrollView style={s4.heatGridScroll}>
+          <ScrollView style={s4.heatGridScroll} bounces={false}>
             <View style={s4.heatGrid}>
-              {modifiedHeatmap.map((row, ri) => (
+              {filteredRowIndices.map(ri => (
                 <View key={ri} style={s4.heatRow}>
                   <View style={s4.hourCell}>
                     <Text style={s4.hourLabel}>{DISPLAY_HOURS[ri]}</Text>
@@ -874,7 +991,7 @@ export default function HomeScreen() {
                     return (
                       <TouchableOpacity
                         key={vi}
-                        style={[s4.heatCell, { backgroundColor: CELL_COLORS[v] }]}
+                        style={[s4.heatCell, { backgroundColor: CELL_COLORS[Math.floor(v)] }]}
                         onPress={() => {
                           setModalDay(formatCellDay(absCi));
                           setModalTime(formatCellTime(ri));
@@ -882,17 +999,17 @@ export default function HomeScreen() {
                         }}
                       >
                         <Text style={[s4.cellLabel, {
-                          color: v >= 3 ? '#065F46' : v === 2 ? '#92400E' : '#9CA3AF',
+                          color: v >= 3 ? '#065F46' : v >= 2 ? '#92400E' : '#9CA3AF',
                         }]}>
-                          {CELL_LABELS[v]}
+                          {CELL_LABELS[Math.floor(v)]}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
               ))}
-            </View>
-          </ScrollView>
+          </View>
+        </ScrollView>
         </View>
         <View style={s4.legend}>
           {[
@@ -935,7 +1052,7 @@ export default function HomeScreen() {
       <View style={s5.wrap}>
         <StatusBar style="dark" />
         <TopNav title="Mejores horarios" onBack={() => setScreen('heatmap')} />
-        <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent}>
+        <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent} bounces={false}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Todos disponibles</Text>
           {sortedGroups.map(([dayLabel, options]) => (
@@ -1006,7 +1123,7 @@ export default function HomeScreen() {
       <View style={s6.wrap}>
         <StatusBar style="dark" />
           <TopNav title="Confirmado" onBack={() => setScreen('heatmap')} />
-        <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent}>
+        <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent} bounces={false}>
           <View style={s6.successIcon}>
             <Text style={{ fontSize: 34 }}>✅</Text>
           </View>
@@ -1365,25 +1482,22 @@ const s1 = StyleSheet.create({
   },
   durRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   durOpt: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 13,
     alignItems: 'center',
   },
   durOptSel: {
     backgroundColor: '#5B4FDB',
-    borderColor: '#5B4FDB',
   },
   durOptText: {
-    fontSize: 16,
-    color: '#111827',
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '600',
   },
   durOptTextSel: {
     color: '#fff',
@@ -1415,6 +1529,49 @@ const s1 = StyleSheet.create({
   pickerDoneText: {
     color: '#fff',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  hourPickerRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 14,
+  },
+  hourPickerCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  hourPickerLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  hourPickerFrame: {
+    height: 180,
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    overflow: 'hidden',
+  },
+  hourPickerContent: {
+    paddingTop: 72,
+    paddingBottom: 72,
+  },
+  hourPickerItem: {
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hourPickerText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  hourPickerTextSel: {
+    fontSize: 17,
+    color: '#1E1B4B',
     fontWeight: '600',
   },
 });
