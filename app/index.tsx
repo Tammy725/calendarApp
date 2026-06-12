@@ -14,6 +14,21 @@ import { connectSocket, joinRoom, leaveRoom, getSocket, disconnectSocket } from 
 
 type Participant = { name: string; initial: string; color: string; bg: string; status: string };
 
+const AVATAR_COLORS = [
+  { color: '#10B981', bg: '#D1FAE5' },
+  { color: '#F59E0B', bg: '#FEF3C7' },
+  { color: '#DB2777', bg: '#FCE7F3' },
+  { color: '#F97316', bg: '#FED7AA' },
+  { color: '#8B5CF6', bg: '#EDE9FE' },
+  { color: '#14B8A6', bg: '#CCFBF1' },
+  { color: '#EF4444', bg: '#FEE2E2' },
+  { color: '#3B82F6', bg: '#DBEAFE' },
+];
+
+function getAvatarColor(index: number) {
+  return AVATAR_COLORS[index % AVATAR_COLORS.length];
+}
+
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
   { initial: 'M', name: 'María', color: '#10B981', bg: '#D1FAE5' },
@@ -159,12 +174,12 @@ export default function HomeScreen() {
     const s = connectSocket();
     if (!s) return;
     const onUserJoined = ({ userId }: { userId: string }) => {
+      const count = (participantsByRoom[roomCode] || []).length;
+      const ac = getAvatarColor(count);
       addParticipant(roomCode, {
         name: userId === useAuthStore.getState().user?.id ? 'Tú' : `Usuario ${userId.slice(0, 4)}`,
         initial: (userId[0] || '?').toUpperCase(),
-        color: '#10B981',
-        bg: '#D1FAE5',
-        status: 'conectado',
+        color: ac.color, bg: ac.bg, status: 'conectado',
       });
     };
     s.on('user-joined', onUserJoined);
@@ -858,10 +873,12 @@ export default function HomeScreen() {
                 setRoomCode(code);
                 joinRoom(code);
                 const name = joinName.trim();
+                const count = (participantsByRoom[code] || []).length;
+                const ac = getAvatarColor(count);
                 addParticipant(code, {
                   name,
                   initial: name[0].toUpperCase(),
-                  color: '#F59E0B', bg: '#FEF3C7', status: 'conectado',
+                  color: ac.color, bg: ac.bg, status: 'conectado',
                 });
                 setJoining(false);
                 setJoinInput('');
