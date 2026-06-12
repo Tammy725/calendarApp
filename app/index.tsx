@@ -1351,8 +1351,8 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={i}
                   style={{
-                    width: 50, height: 50, borderRadius: 25, backgroundColor: c.bg,
-                    borderWidth: 2, borderColor: c.color, alignItems: 'center', justifyContent: 'center',
+                    width: 40, height: 40, borderRadius: 20, backgroundColor: c.bg,
+                    alignItems: 'center', justifyContent: 'center',
                   }}
                   onPress={() => {
                     if (editingColorIdx !== null) {
@@ -1364,7 +1364,7 @@ export default function HomeScreen() {
                     }
                   }}
                 >
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: c.color }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: c.color }}>
                     {editingColorIdx !== null ? participants[editingColorIdx]?.initial : '?'}
                   </Text>
                 </TouchableOpacity>
