@@ -25,10 +25,6 @@ const AVATAR_COLORS = [
   { color: '#3B82F6', bg: '#DBEAFE' },
 ];
 
-function getAvatarColor(index: number) {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length];
-}
-
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
   { initial: 'M', name: 'María', color: '#10B981', bg: '#D1FAE5' },
@@ -175,7 +171,7 @@ export default function HomeScreen() {
     if (!s) return;
     const onUserJoined = ({ userId }: { userId: string }) => {
       const count = (participantsByRoom[roomCode] || []).length;
-      const ac = getAvatarColor(count);
+      const ac = AVATAR_COLORS[count % AVATAR_COLORS.length];
       addParticipant(roomCode, {
         name: userId === useAuthStore.getState().user?.id ? 'Tú' : `Usuario ${userId.slice(0, 4)}`,
         initial: (userId[0] || '?').toUpperCase(),
@@ -740,17 +736,20 @@ export default function HomeScreen() {
             ))}
           </View>
           <Text style={s2.peopleTitle}>Personas unidas · {participants.length}/{groupSize}</Text>
-          {participants.map((p) => (
-            <View key={p.name} style={s2.personRow}>
-              <View style={[s2.avatar, { backgroundColor: p.bg }]}>
-                <Text style={[s2.avatarText, { color: p.color }]}>{p.initial}</Text>
+          {participants.map((p, i) => {
+            const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+            return (
+              <View key={p.name} style={s2.personRow}>
+                <View style={[s2.avatar, { backgroundColor: ac.bg }]}>
+                  <Text style={[s2.avatarText, { color: ac.color }]}>{p.initial}</Text>
+                </View>
+                <Text style={s2.personName}>{p.name}</Text>
+                <Text style={[s2.personStatus, { color: p.status === 'conectado' ? '#10B981' : '#9CA3AF' }]}>
+                  {STATUS_TEXT[p.status]}
+                </Text>
               </View>
-              <Text style={s2.personName}>{p.name}</Text>
-              <Text style={[s2.personStatus, { color: p.status === 'conectado' ? '#10B981' : '#9CA3AF' }]}>
-                {STATUS_TEXT[p.status]}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
         <View style={s2.bottom}>
           <TouchableOpacity style={s2.nextBtn} onPress={() => { setScreen('conectar'); setCompletedSteps(prev => [...prev, 'invitar']); }}>
@@ -874,7 +873,7 @@ export default function HomeScreen() {
                 joinRoom(code);
                 const name = joinName.trim();
                 const count = (participantsByRoom[code] || []).length;
-                const ac = getAvatarColor(count);
+                const ac = AVATAR_COLORS[count % AVATAR_COLORS.length];
                 addParticipant(code, {
                   name,
                   initial: name[0].toUpperCase(),
@@ -1007,14 +1006,17 @@ export default function HomeScreen() {
             <Text style={s4.heatSub}>{formatDateRange()}</Text>
           </View>
           <View style={s4.avatarsRow}>
-            {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => (
-              <View key={p.name} style={[s4.avaSm, {
-                backgroundColor: p.bg,
-                marginLeft: i > 0 ? -6 : 0,
-              }]}>
-                <Text style={[s4.avaSmText, { color: p.color }]}>{p.initial}</Text>
-              </View>
-            ))}
+            {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
+              const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+              return (
+                <View key={p.name} style={[s4.avaSm, {
+                  backgroundColor: ac.bg,
+                  marginLeft: i > 0 ? -6 : 0,
+                }]}>
+                  <Text style={[s4.avaSmText, { color: ac.color }]}>{p.initial}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
         <View style={s4.gridContainer}>
@@ -1225,16 +1227,19 @@ export default function HomeScreen() {
             </View>
             <Text style={s6.attendLbl}>Asistentes</Text>
             <View style={s6.attendRow}>
-              {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p) => (
-                <View key={p.name} style={s6.attendPerson}>
-                  <View style={[s6.attendAva, { backgroundColor: p.bg }]}>
-                    <Text style={[s6.attendAvaText, { color: p.color }]}>{p.initial}</Text>
+              {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
+                const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+                return (
+                  <View key={p.name} style={s6.attendPerson}>
+                    <View style={[s6.attendAva, { backgroundColor: ac.bg }]}>
+                      <Text style={[s6.attendAvaText, { color: ac.color }]}>{p.initial}</Text>
+                    </View>
+                    <Text style={s6.attendName}>
+                      {p.name === 'Tú' ? (useAuthStore.getState().user?.name || 'Tú') : p.name}
+                    </Text>
                   </View>
-                  <Text style={s6.attendName}>
-                    {p.name === 'Tú' ? (useAuthStore.getState().user?.name || 'Tú') : p.name}
-                  </Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         </ScrollView>
