@@ -421,7 +421,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('crear'); }}>
+          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setCompletedSteps([]); setScreen('crear'); }}>
             <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s0.ghostBtn} onPress={() => setScreen('join')}>
@@ -463,6 +463,8 @@ export default function HomeScreen() {
             value={planName}
             onChangeText={setPlanName}
             autoCapitalize="characters"
+            autoCorrect={true}
+            spellCheck={true}
             placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
             placeholderTextColor="#9CA3AF"
           />
@@ -1449,11 +1451,12 @@ const s1 = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#5B4FDB',
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 18,
     paddingHorizontal: 18,
     fontSize: 15,
     color: '#111827',
     fontWeight: '600',
+    height: 58,
     fontFamily: 'Arial',
     letterSpacing: 0,
   },
