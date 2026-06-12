@@ -1241,7 +1241,7 @@ export default function HomeScreen() {
               </View>
               <View>
                 <Text style={s6.dateVal}>{confirmedDay || selectedOption?.day || 'Miércoles 15 de enero'}</Text>
-                <Text style={s6.timeVal}>{(confirmedTime || selectedOption?.time || '7:00 PM – 9:00 PM').replace(/\s*·\s*\d+h.*$/, '').trim()}</Text>
+                <Text style={s6.timeVal}>{confirmedTime || selectedOption?.time || '7:00 PM – 9:00 PM · 2 horas'}</Text>
               </View>
             </View>
             <Text style={s6.attendLbl}>Asistentes</Text>
