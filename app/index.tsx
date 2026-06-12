@@ -866,7 +866,7 @@ export default function HomeScreen() {
                 setJoining(false);
                 setJoinInput('');
                 setJoinName('');
-                setScreen('conectar');
+                setScreen('invitar');
               } else {
                 setJoining(false);
                 Alert.alert('No encontrado', 'No hay un plan con ese código');
