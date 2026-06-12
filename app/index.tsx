@@ -1594,7 +1594,7 @@ const s1 = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.7,
     marginBottom: 12,
-    marginTop: 16,
+    marginTop: 12,
   },
   heading: {
     fontSize: 26,
