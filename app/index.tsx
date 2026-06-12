@@ -1715,15 +1715,15 @@ const s1 = StyleSheet.create({
     letterSpacing: 0.5,
   },
   hourPickerFrame: {
-    height: 144,
+    height: 180,
     width: '100%',
     borderRadius: 12,
     backgroundColor: '#F9FAFB',
     overflow: 'hidden',
   },
   hourPickerContent: {
-    paddingTop: 54,
-    paddingBottom: 54,
+    paddingTop: 72,
+    paddingBottom: 72,
   },
   hourPickerItem: {
     height: 36,
