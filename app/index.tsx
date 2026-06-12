@@ -135,6 +135,8 @@ export default function HomeScreen() {
   const [joining, setJoining] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, Participant[]>>({});
+  const [customColors, setCustomColors] = useState<Record<string, { color: string; bg: string }>>({});
+  const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
 
   const participants = useMemo(() => participantsByRoom[roomCode] || [], [participantsByRoom, roomCode]);
 
@@ -737,12 +739,13 @@ export default function HomeScreen() {
           </View>
           <Text style={s2.peopleTitle}>Personas unidas · {participants.length}/{groupSize}</Text>
           {participants.map((p, i) => {
-            const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+            const custom = customColors[p.name];
+            const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
             return (
               <View key={p.name} style={s2.personRow}>
-                <View style={[s2.avatar, { backgroundColor: ac.bg }]}>
+                <TouchableOpacity onPress={() => setEditingColorIdx(i)} style={[s2.avatar, { backgroundColor: ac.bg }]}>
                   <Text style={[s2.avatarText, { color: ac.color }]}>{p.initial}</Text>
-                </View>
+                </TouchableOpacity>
                 <Text style={s2.personName}>{p.name}</Text>
                 <Text style={[s2.personStatus, { color: p.status === 'conectado' ? '#10B981' : '#9CA3AF' }]}>
                   {STATUS_TEXT[p.status]}
@@ -1331,6 +1334,46 @@ export default function HomeScreen() {
                 <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={editingColorIdx !== null}
+        transparent
+        animationType="none"
+        onRequestClose={() => setEditingColorIdx(null)}
+      >
+        <View style={modalStyle.overlay}>
+          <View style={modalStyle.card}>
+            <Text style={modalStyle.title}>Elegir color</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 20, marginTop: 12 }}>
+              {AVATAR_COLORS.map((c, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={{
+                    width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg,
+                    borderWidth: 2, borderColor: c.color, alignItems: 'center', justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    if (editingColorIdx !== null) {
+                      const p = participants[editingColorIdx];
+                      if (p) {
+                        setCustomColors(prev => ({ ...prev, [p.name]: c }));
+                      }
+                      setEditingColorIdx(null);
+                    }
+                  }}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: c.color }} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={modalStyle.cancelBtn}
+              onPress={() => setEditingColorIdx(null)}
+            >
+              <Text style={modalStyle.cancelBtnText}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
