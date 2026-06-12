@@ -1586,7 +1586,7 @@ const s1 = StyleSheet.create({
     flex: 1,
   },
   bodyContent: {
-    padding: 20,
+    padding: 16,
     flexGrow: 1,
   },
   sectionLabel: {
@@ -1603,7 +1603,7 @@ const s1 = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
     letterSpacing: -0.5,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   inputActive: {
     backgroundColor: '#F9FAFB',
@@ -1618,12 +1618,12 @@ const s1 = StyleSheet.create({
     height: 50,
     fontFamily: 'Arial',
     letterSpacing: 0,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   dateRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   dateBox: {
     flex: 1,
@@ -1647,7 +1647,7 @@ const s1 = StyleSheet.create({
   durRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   durOpt: {
     flex: 1,
@@ -1700,7 +1700,7 @@ const s1 = StyleSheet.create({
   hourPickerRow: {
     flexDirection: 'row',
     gap: 16,
-    marginTop: 8,
+    marginTop: 4,
   },
   hourPickerCol: {
     flex: 1,
