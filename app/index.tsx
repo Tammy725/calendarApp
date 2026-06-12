@@ -111,7 +111,7 @@ export default function HomeScreen() {
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(0);
-  const [periodIdx, setPeriodIdx] = useState(0);
+  const [periodIdx, setPeriodIdx] = useState(-1);
   const [customStartHour, setCustomStartHour] = useState(7);
   const [customEndHour, setCustomEndHour] = useState(11);
   const desdeCenterRef = useRef(7);
@@ -201,13 +201,13 @@ export default function HomeScreen() {
   }, [roomCode]);
 
   useEffect(() => {
-    if (screen !== 'crear') return;
+    if (screen !== 'crear' || periodIdx < 0) return;
     desdeCenterRef.current = customStartHour;
     hastaCenterRef.current = customEndHour;
     forceRender(n => n + 1);
     desdeRef.current?.scrollTo({ y: customStartHour * 36, animated: false });
     hastaRef.current?.scrollTo({ y: customEndHour * 36, animated: false });
-  }, [screen, customStartHour, customEndHour]);
+  }, [screen, customStartHour, customEndHour, periodIdx]);
 
   const navCompleted: boolean[] = (() => {
     return NAV_STEPS.map(s => completedSteps.includes(s.key));
@@ -444,7 +444,7 @@ export default function HomeScreen() {
     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const fd = `${days[fromDate.getDay()]} ${fromDate.getDate()} ${months[fromDate.getMonth()]}`;
     const td = `${days[toDate.getDay()]} ${toDate.getDate()} ${months[toDate.getMonth()]}`;
-    return `${fd} - ${td} · ${TIME_PERIODS[periodIdx].label}`;
+    return `${fd} - ${td}${periodIdx >= 0 ? ` · ${TIME_PERIODS[periodIdx].label}` : ''}`;
   }
 
   function formatCellTime(hourIdx: number): string {
@@ -571,7 +571,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <View style={s1.hourPickerRow}>
+          {periodIdx >= 0 && <View style={s1.hourPickerRow}>
             <View style={s1.hourPickerCol}>
               <Text style={s1.hourPickerLabel}>Desde</Text>
               <View style={s1.hourPickerFrame}>
@@ -647,9 +647,9 @@ export default function HomeScreen() {
                     </View>
                   ))}
                 </ScrollView>
-              </View>
             </View>
           </View>
+          </View>}
         </ScrollView>
         {showDatePicker && (
           <View style={{ alignItems: 'center' }}>
@@ -684,6 +684,10 @@ export default function HomeScreen() {
             }
             if (!fromDate || !toDate) {
               Alert.alert('Fechas requeridas', 'Selecciona las fechas de inicio y fin');
+              return;
+            }
+            if (periodIdx < 0) {
+              Alert.alert('Franja horaria', 'Selecciona una franja horaria');
               return;
             }
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -884,9 +888,10 @@ export default function HomeScreen() {
                 setFromDate(match.fromDate);
                 setToDate(match.toDate);
                 setDurationIdx(match.durationIdx);
-                setPeriodIdx(match.periodIdx ?? 3);
-                setCustomStartHour(match.customStartHour ?? TIME_PERIODS[match.periodIdx ?? 3].startHour);
-                setCustomEndHour(match.customEndHour ?? TIME_PERIODS[match.periodIdx ?? 3].endHour);
+                setPeriodIdx(match.periodIdx >= 0 ? match.periodIdx : 3);
+                const pi = match.periodIdx >= 0 ? match.periodIdx : 3;
+                setCustomStartHour(match.customStartHour ?? TIME_PERIODS[pi].startHour);
+                setCustomEndHour(match.customEndHour ?? TIME_PERIODS[pi].endHour);
                 setGroupSize(match.groupSize);
                 setRoomCode(code);
                 joinRoom(code);
