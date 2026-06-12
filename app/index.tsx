@@ -1607,8 +1607,8 @@ const s1 = StyleSheet.create({
   },
   inputActive: {
     backgroundColor: '#F9FAFB',
-    borderWidth: 2,
-    borderColor: '#5B4FDB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 18,
