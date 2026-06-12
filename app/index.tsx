@@ -1586,7 +1586,7 @@ const s1 = StyleSheet.create({
     flex: 1,
   },
   bodyContent: {
-    padding: 20,
+    padding: 16,
     flexGrow: 1,
   },
   sectionLabel: {
