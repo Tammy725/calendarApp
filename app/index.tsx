@@ -990,7 +990,7 @@ export default function HomeScreen() {
             <Text style={s4.heatSub}>{formatDateRange()}</Text>
           </View>
           <View style={s4.avatarsRow}>
-            {PEOPLE.slice(0, 4).map((p, i) => (
+            {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => (
               <View key={p.name} style={[s4.avaSm, {
                 backgroundColor: p.bg,
                 marginLeft: i > 0 ? -6 : 0,
