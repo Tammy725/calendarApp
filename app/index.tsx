@@ -704,8 +704,8 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={s2.copyBtn}
                 onPress={async () => {
-                  await Clipboard.setStringAsync(`🔑 Código del plan: *${roomCode}*\n\nhttp://miapp.com/unirse/${roomCode}`);
-                  Alert.alert('Copiado', 'Código y enlace copiados');
+                  await Clipboard.setStringAsync(roomCode);
+                  Alert.alert('Copiado', 'Código copiado');
                 }}
               >
                 <Text style={s2.copyBtnText}>Copiar</Text>
