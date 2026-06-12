@@ -120,6 +120,7 @@ export default function HomeScreen() {
   const [roomCode, setRoomCode] = useState('');
   const [createdPlans, setCreatedPlans] = useState<{ code: string; name: string; fromDate: Date; toDate: Date; durationIdx: number; periodIdx: number; customStartHour: number; customEndHour: number; groupSize: number }[]>([]);
   const [joinInput, setJoinInput] = useState('');
+  const [joinName, setJoinName] = useState('');
   const [joining, setJoining] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, Participant[]>>({});
@@ -805,12 +806,23 @@ export default function HomeScreen() {
         </View>
         <View style={{ padding: 24, gap: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
-          <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa el código que te compartieron</Text>
+          <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa tu nombre y el código que te compartieron</Text>
+          <TextInput
+            style={{
+              width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
+              padding: 16, fontSize: 18, color: '#11181C', textAlign: 'center',
+              marginTop: 20,
+            }}
+            placeholder="Tu nombre"
+            value={joinName}
+            onChangeText={setJoinName}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
           <TextInput
             style={{
               width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
               padding: 16, fontSize: 20, color: '#11181C', textAlign: 'center', letterSpacing: 4,
-              marginTop: 20,
             }}
             placeholder="Ej: A1B2C3"
             value={joinInput}
@@ -822,6 +834,10 @@ export default function HomeScreen() {
             style={{ width: '100%', backgroundColor: '#5B4FDB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 }}
             disabled={joining}
             onPress={async () => {
+              if (!joinName.trim()) {
+                Alert.alert('Nombre requerido', 'Ingresa tu nombre');
+                return;
+              }
               if (!joinInput.trim()) {
                 Alert.alert('Código requerido', 'Ingresa el código del plan');
                 return;
@@ -840,13 +856,15 @@ export default function HomeScreen() {
                 setGroupSize(match.groupSize);
                 setRoomCode(code);
                 joinRoom(code);
+                const name = joinName.trim();
                 addParticipant(code, {
-                  name: useAuthStore.getState().user?.name || 'Invitado',
-                  initial: (useAuthStore.getState().user?.name?.[0] || 'I').toUpperCase(),
+                  name,
+                  initial: name[0].toUpperCase(),
                   color: '#F59E0B', bg: '#FEF3C7', status: 'conectado',
                 });
                 setJoining(false);
                 setJoinInput('');
+                setJoinName('');
                 setScreen('conectar');
               } else {
                 setJoining(false);
