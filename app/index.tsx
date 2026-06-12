@@ -455,7 +455,7 @@ export default function HomeScreen() {
       const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
       return `${h12}:00 ${a}`;
     };
-    return `${fmt(start)} – ${fmt(end)} · ${TIME_PERIODS[periodIdx].label}`;
+    return `${fmt(start)} – ${fmt(end)}`;
   }
 
   const filteredRowIndices = useMemo(() => {
