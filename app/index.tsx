@@ -1346,12 +1346,12 @@ export default function HomeScreen() {
         <View style={modalStyle.overlay}>
           <View style={modalStyle.card}>
             <Text style={modalStyle.title}>Elegir color</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 20, marginTop: 12 }}>
-              {AVATAR_COLORS.map((c, i) => (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginVertical: 20 }}>
+              {[{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS].map((c, i) => (
                 <TouchableOpacity
                   key={i}
                   style={{
-                    width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg,
+                    width: 50, height: 50, borderRadius: 25, backgroundColor: c.bg,
                     borderWidth: 2, borderColor: c.color, alignItems: 'center', justifyContent: 'center',
                   }}
                   onPress={() => {
@@ -1364,16 +1364,12 @@ export default function HomeScreen() {
                     }
                   }}
                 >
-                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: c.color }} />
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: c.color }}>
+                    {editingColorIdx !== null ? participants[editingColorIdx]?.initial : '?'}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity
-              style={modalStyle.cancelBtn}
-              onPress={() => setEditingColorIdx(null)}
-            >
-              <Text style={modalStyle.cancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
