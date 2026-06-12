@@ -140,6 +140,23 @@ export default function HomeScreen() {
 
   const participants = useMemo(() => participantsByRoom[roomCode] || [], [participantsByRoom, roomCode]);
 
+  const participantsByRoomRef = useRef(participantsByRoom);
+  participantsByRoomRef.current = participantsByRoom;
+  const customColorsRef = useRef(customColors);
+  customColorsRef.current = customColors;
+
+  function getUnusedColor(code: string) {
+    const used = new Set<string>();
+    const list = participantsByRoomRef.current[code] || [];
+    list.forEach((p, i) => {
+      const custom = customColorsRef.current[p.name];
+      const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+      used.add(ac.color);
+    });
+    const ALL = [{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS];
+    return ALL.find(c => !used.has(c.color)) || ALL[0];
+  }
+
   function addParticipant(code: string, p: Participant) {
     setParticipantsByRoom(prev => {
       const list = prev[code] || [];
@@ -172,8 +189,7 @@ export default function HomeScreen() {
     const s = connectSocket();
     if (!s) return;
     const onUserJoined = ({ userId }: { userId: string }) => {
-      const count = (participantsByRoom[roomCode] || []).length;
-      const ac = AVATAR_COLORS[count % AVATAR_COLORS.length];
+      const ac = getUnusedColor(roomCode);
       addParticipant(roomCode, {
         name: userId === useAuthStore.getState().user?.id ? 'Tú' : `Usuario ${userId.slice(0, 4)}`,
         initial: (userId[0] || '?').toUpperCase(),
@@ -875,8 +891,7 @@ export default function HomeScreen() {
                 setRoomCode(code);
                 joinRoom(code);
                 const name = joinName.trim();
-                const count = (participantsByRoom[code] || []).length;
-                const ac = AVATAR_COLORS[count % AVATAR_COLORS.length];
+                const ac = getUnusedColor(code);
                 addParticipant(code, {
                   name,
                   initial: name[0].toUpperCase(),
