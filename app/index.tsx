@@ -70,7 +70,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 const NAV_STEPS = [
   { key: 'crear', label: 'Plan', icon: '📋' },
-  { key: 'invitar', label: 'Invitar', icon: '👥' },
+  { key: 'invitar', label: 'Integrantes', icon: '👥' },
   { key: 'conectar', label: 'Conectar', icon: '📅' },
   { key: 'heatmap', label: 'Calendario', icon: '⏰' },
   { key: 'confirmado', label: 'Resumen', icon: '📝' },
@@ -679,7 +679,7 @@ export default function HomeScreen() {
         <StatusBar style="dark" />
         <TopNav title="Invitar" onBack={() => setScreen('crear')} />
         <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent} bounces={false}>
-          <Text style={s2.heading}>Invita a tu grupo 👥</Text>
+          <Text style={s2.heading}>Integrantes 👥</Text>
           <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
           <View style={s2.linkCard}>
             <Text style={s2.linkCardLabel}>Código y enlace de invitación</Text>
