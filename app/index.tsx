@@ -521,9 +521,9 @@ export default function HomeScreen() {
         <StatusBar style="dark" />
         <TopNav title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
         <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent} bounces={false}>
-          <Text style={s1.sectionLabel}>Nuevo plan</Text>
+          <Text style={[s1.sectionLabel, { marginTop: 0 }]}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
-          <Text style={s1.sectionLabel}>Nombre del plan</Text>
+          <Text style={[s1.sectionLabel, { marginTop: 0 }]}>Nombre del plan</Text>
           <TextInput
             style={s1.inputActive}
             value={planName}
@@ -1594,7 +1594,7 @@ const s1 = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.7,
     marginBottom: 12,
-    marginTop: 0,
+    marginTop: 24,
   },
   heading: {
     fontSize: 26,
