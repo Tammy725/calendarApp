@@ -23,7 +23,7 @@ const DISPLAY_HOURS = ['6am','7am','8am','9am','10am','11am','12pm','1pm','2pm',
 const PAGE_SIZE = 5;
 
 const TIME_PERIODS = [
-  { label: 'Día', startHour: 8, endHour: 11 },
+  { label: 'Día', startHour: 7, endHour: 11 },
   { label: 'Tarde', startHour: 12, endHour: 17 },
   { label: 'Noche', startHour: 18, endHour: 24 },
   { label: 'Todo el día', startHour: 0, endHour: 24 },
@@ -97,9 +97,9 @@ export default function HomeScreen() {
   const [toDate, setToDate] = useState<Date | null>(null);
   const [durationIdx, setDurationIdx] = useState(0);
   const [periodIdx, setPeriodIdx] = useState(0);
-  const [customStartHour, setCustomStartHour] = useState(8);
+  const [customStartHour, setCustomStartHour] = useState(7);
   const [customEndHour, setCustomEndHour] = useState(11);
-  const desdeCenterRef = useRef(8);
+  const desdeCenterRef = useRef(7);
   const hastaCenterRef = useRef(11);
   const [, forceRender] = useState(0);
   const [groupSize, setGroupSize] = useState(2);
