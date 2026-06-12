@@ -882,6 +882,7 @@ export default function HomeScreen() {
                   initial: name[0].toUpperCase(),
                   color: ac.color, bg: ac.bg, status: 'conectado',
                 });
+                setCompletedSteps(prev => [...new Set([...prev, 'crear'])]);
                 setJoining(false);
                 setJoinInput('');
                 setJoinName('');
