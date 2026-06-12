@@ -1616,12 +1616,12 @@ const s1 = StyleSheet.create({
     height: 58,
     fontFamily: 'Arial',
     letterSpacing: 0,
-    marginBottom: 8,
+    marginBottom: 20,
   },
   dateRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 20,
   },
   dateBox: {
     flex: 1,
@@ -1645,7 +1645,7 @@ const s1 = StyleSheet.create({
   durRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 20,
   },
   durOpt: {
     flex: 1,
