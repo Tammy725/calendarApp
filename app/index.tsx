@@ -1593,8 +1593,8 @@ const s1 = StyleSheet.create({
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.7,
-    marginBottom: 8,
-    marginTop: 14,
+    marginBottom: 12,
+    marginTop: 18,
   },
   heading: {
     fontSize: 26,
@@ -1642,13 +1642,14 @@ const s1 = StyleSheet.create({
   },
   durRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   durOpt: {
     flex: 1,
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    paddingVertical: 13,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
     alignItems: 'center',
   },
   durOptSel: {
