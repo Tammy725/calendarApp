@@ -807,7 +807,7 @@ export default function HomeScreen() {
         <View style={{ padding: 24, gap: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
           <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa tu nombre y el código que te compartieron</Text>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>Nombre</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', marginTop: 8, letterSpacing: 0.6 }}>Nombre</Text>
           <TextInput
             style={{
               width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
@@ -819,7 +819,7 @@ export default function HomeScreen() {
             autoCapitalize="words"
             autoCorrect={false}
           />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.6 }}>Código del plan</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 0.6 }}>Código del plan</Text>
           <TextInput
             style={{
               width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
