@@ -9,6 +9,10 @@ import { calendarApi } from '@/lib/api/calendar';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { handleGoogleSignIn } from '@/lib/api/auth';
 import * as Calendar from 'expo-calendar';
+import { roomsApi } from '@/lib/api/rooms';
+import { connectSocket, joinRoom, leaveRoom, getSocket, disconnectSocket } from '@/lib/socket';
+
+type Participant = { name: string; initial: string; color: string; bg: string; status: string };
 
 const PEOPLE = [
   { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
@@ -118,6 +122,21 @@ export default function HomeScreen() {
   const [joinInput, setJoinInput] = useState('');
   const [joining, setJoining] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, Participant[]>>({});
+
+  const participants = useMemo(() => participantsByRoom[roomCode] || [], [participantsByRoom, roomCode]);
+
+  function addParticipant(code: string, p: Participant) {
+    setParticipantsByRoom(prev => {
+      const list = prev[code] || [];
+      if (list.some(x => x.name === p.name)) return prev;
+      return { ...prev, [code]: [...list, p] };
+    });
+  }
+
+  function initParticipantsForRoom(code: string) {
+    addParticipant(code, { name: 'Tú', initial: 'T', color: '#5B4FDB', bg: '#EEF2FF', status: 'conectado' });
+  }
 
   const fetchedRef = useRef(false);
   const calendarConnected = useRef(false);
@@ -133,6 +152,23 @@ export default function HomeScreen() {
       ]);
     }
   }, [screen]);
+
+  useEffect(() => {
+    if (!roomCode) return;
+    const s = connectSocket();
+    if (!s) return;
+    const onUserJoined = ({ userId }: { userId: string }) => {
+      addParticipant(roomCode, {
+        name: userId === useAuthStore.getState().user?.id ? 'Tú' : `Usuario ${userId.slice(0, 4)}`,
+        initial: (userId[0] || '?').toUpperCase(),
+        color: '#10B981',
+        bg: '#D1FAE5',
+        status: 'conectado',
+      });
+    };
+    s.on('user-joined', onUserJoined);
+    return () => { s.off('user-joined', onUserJoined); };
+  }, [roomCode]);
 
   useEffect(() => {
     if (screen !== 'crear') return;
@@ -620,10 +656,13 @@ export default function HomeScreen() {
               Alert.alert('Fechas requeridas', 'Selecciona las fechas de inicio y fin');
               return;
             }
-            setScreen('invitar');
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             setRoomCode(code);
             setCreatedPlans(prev => [...prev, { code, name: planName, fromDate: new Date(fromDate), toDate: new Date(toDate), durationIdx, periodIdx, customStartHour, customEndHour, groupSize }]);
+            initParticipantsForRoom(code);
+            joinRoom(code);
+            roomsApi.create({ name: planName }).catch(() => {});
+            setScreen('invitar');
             setCompletedSteps(prev => [...prev, 'crear']);
           }}>
             <Text style={s1.nextBtnText}>Siguiente →</Text>
@@ -684,17 +723,15 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={s2.peopleTitle}>Personas unidas · 1/{groupSize}</Text>
-          {PEOPLE.slice(0, -1).map((p, i) => (
+          <Text style={s2.peopleTitle}>Personas unidas · {participants.length}/{groupSize}</Text>
+          {participants.map((p) => (
             <View key={p.name} style={s2.personRow}>
               <View style={[s2.avatar, { backgroundColor: p.bg }]}>
                 <Text style={[s2.avatarText, { color: p.color }]}>{p.initial}</Text>
               </View>
               <Text style={s2.personName}>{p.name}</Text>
-              <Text style={[s2.personStatus, {
-                color: i < 2 ? '#10B981' : i < 4 ? '#F59E0B' : '#9CA3AF',
-              }]}>
-                {i < 2 ? STATUS_TEXT.conectado : i < 4 ? STATUS_TEXT.esperando : STATUS_TEXT.invitado}
+              <Text style={[s2.personStatus, { color: p.status === 'conectado' ? '#10B981' : '#9CA3AF' }]}>
+                {STATUS_TEXT[p.status]}
               </Text>
             </View>
           ))}
@@ -790,7 +827,8 @@ export default function HomeScreen() {
                 return;
               }
               setJoining(true);
-              const match = createdPlans.find(p => p.code === joinInput.trim().toUpperCase());
+              const code = joinInput.trim().toUpperCase();
+              const match = createdPlans.find(p => p.code === code);
               if (match) {
                 setPlanName(match.name);
                 setFromDate(match.fromDate);
@@ -800,7 +838,13 @@ export default function HomeScreen() {
                 setCustomStartHour(match.customStartHour ?? TIME_PERIODS[match.periodIdx ?? 3].startHour);
                 setCustomEndHour(match.customEndHour ?? TIME_PERIODS[match.periodIdx ?? 3].endHour);
                 setGroupSize(match.groupSize);
-                setRoomCode(match.code);
+                setRoomCode(code);
+                joinRoom(code);
+                addParticipant(code, {
+                  name: useAuthStore.getState().user?.name || 'Invitado',
+                  initial: (useAuthStore.getState().user?.name?.[0] || 'I').toUpperCase(),
+                  color: '#F59E0B', bg: '#FEF3C7', status: 'conectado',
+                });
                 setJoining(false);
                 setJoinInput('');
                 setScreen('conectar');
@@ -1145,13 +1189,13 @@ export default function HomeScreen() {
             </View>
             <Text style={s6.attendLbl}>Asistentes</Text>
             <View style={s6.attendRow}>
-              {PEOPLE.slice(0, 4).map((p) => (
+              {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p) => (
                 <View key={p.name} style={s6.attendPerson}>
                   <View style={[s6.attendAva, { backgroundColor: p.bg }]}>
                     <Text style={[s6.attendAvaText, { color: p.color }]}>{p.initial}</Text>
                   </View>
                   <Text style={s6.attendName}>
-                    {p.name === 'Tú' ? 'Ana' : p.name}
+                    {p.name === 'Tú' ? (useAuthStore.getState().user?.name || 'Tú') : p.name}
                   </Text>
                 </View>
               ))}
