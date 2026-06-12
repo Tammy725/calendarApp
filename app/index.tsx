@@ -534,7 +534,7 @@ export default function HomeScreen() {
             placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
             placeholderTextColor="#9CA3AF"
           />
-          <View style={{ borderBottomWidth: 1, borderBottomColor: '#E5E7EB', marginVertical: 16 }} />
+          <View style={{ borderBottomWidth: 2, borderBottomColor: '#E5E7EB', marginVertical: 16 }} />
           <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
             <TouchableOpacity style={s1.dateBox} onPress={() => {
@@ -554,7 +554,7 @@ export default function HomeScreen() {
               <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ borderBottomWidth: 1, borderBottomColor: '#E5E7EB', marginVertical: 16 }} />
+          <View style={{ borderBottomWidth: 2, borderBottomColor: '#E5E7EB', marginVertical: 16 }} />
           <Text style={s1.sectionLabel}>Franja horaria</Text>
           <View style={s1.durRow}>
             {TIME_PERIODS.map((p, i) => (
