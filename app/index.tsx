@@ -1346,30 +1346,42 @@ export default function HomeScreen() {
         <View style={modalStyle.overlay}>
           <View style={modalStyle.card}>
             <Text style={modalStyle.title}>Elegir color</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginVertical: 20 }}>
-              {[{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS].map((c, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={{
-                    width: 40, height: 40, borderRadius: 20, backgroundColor: c.bg,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
-                  onPress={() => {
-                    if (editingColorIdx !== null) {
-                      const p = participants[editingColorIdx];
-                      if (p) {
-                        setCustomColors(prev => ({ ...prev, [p.name]: c }));
-                      }
-                      setEditingColorIdx(null);
-                    }
-                  }}
-                >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: c.color }}>
-                    {editingColorIdx !== null ? participants[editingColorIdx]?.initial : '?'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {(() => {
+              const usedColors = new Set<string>();
+              participants.forEach((p, i) => {
+                if (i === editingColorIdx) return;
+                const custom = customColors[p.name];
+                const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+                usedColors.add(ac.color);
+              });
+              const ALL_COLORS = [{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS];
+              return (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginVertical: 20 }}>
+                  {ALL_COLORS.filter(c => !usedColors.has(c.color)).map((c, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={{
+                        width: 40, height: 40, borderRadius: 20, backgroundColor: c.bg,
+                        alignItems: 'center', justifyContent: 'center',
+                      }}
+                      onPress={() => {
+                        if (editingColorIdx !== null) {
+                          const p = participants[editingColorIdx];
+                          if (p) {
+                            setCustomColors(prev => ({ ...prev, [p.name]: c }));
+                          }
+                          setEditingColorIdx(null);
+                        }
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: c.color }}>
+                        {editingColorIdx !== null ? participants[editingColorIdx]?.initial : '?'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })()}
           </View>
         </View>
       </Modal>
