@@ -555,7 +555,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={{ borderBottomWidth: 2, borderBottomColor: '#D1D5DB', marginVertical: 12 }} />
-          <Text style={s1.sectionLabel}>Franja horaria</Text>
+          <Text style={s1.sectionLabel}>¿A qué hora podría ser?</Text>
           <View style={s1.durRow}>
             {TIME_PERIODS.map((p, i) => (
               <TouchableOpacity
