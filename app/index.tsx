@@ -15,8 +15,8 @@ import { connectSocket, joinRoom, leaveRoom, getSocket, disconnectSocket } from 
 type Participant = { name: string; initial: string; color: string; bg: string; status: string };
 
 const AVATAR_COLORS = [
-  { color: '#F59E0B', bg: '#FEF3C7' },
   { color: '#DB2777', bg: '#FCE7F3' },
+  { color: '#F59E0B', bg: '#FEF3C7' },
   { color: '#10B981', bg: '#D1FAE5' },
   { color: '#F97316', bg: '#FED7AA' },
   { color: '#8B5CF6', bg: '#EDE9FE' },
