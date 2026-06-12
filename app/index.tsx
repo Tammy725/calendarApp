@@ -487,7 +487,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setCompletedSteps([]); setScreen('crear'); }}>
+          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setScreen('crear'); }}>
             <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s0.ghostBtn} onPress={() => setScreen('join')}>
