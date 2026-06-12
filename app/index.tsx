@@ -1276,7 +1276,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
             const dia = confirmedDay || 'Por confirmar';
             const hora = confirmedTime || 'A definir';
-            const texto = `🎉 *${planName}*\n📅 ${dia}\n⏰ ${hora}\n\n👇 Únete con el código: PLAN-A1B2\n\n✨ Hecho con MiApp`;
+            const texto = `🎉 *${planName}*\n📅 ${dia}\n⏰ ${hora}\n\n👇 Únete con el código: ${roomCode}\n\n✨ Hecho con MiApp`;
             await Share.share({ message: texto });
           }}>
             <Text style={s6.shareBtnText}>Compartir con el grupo 💬</Text>
