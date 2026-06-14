@@ -47,12 +47,12 @@ const TIME_PERIODS = [
 
 const DARK = {
   bg: '#121212',
-  card: '#1e1e1e',
-  elevated: '#2a2a2a',
-  border: '#2a2a2a',
-  text: '#e4e4e4',
-  textSecondary: '#a0a0a0',
-  textMuted: '#6b6b6b',
+  card: '#1a1a1a',
+  elevated: '#252525',
+  border: '#333333',
+  text: '#ffffff',
+  textSecondary: '#b3b3b3',
+  textMuted: '#73777c',
 };
 
 const OPTIONS = [
@@ -81,7 +81,7 @@ const MAIN_SCREENS = new Set(['crear', 'invitar', 'heatmap', 'blockout', 'mejore
 function TopNav({ title, onBack, darkMode, onToggleDark }: { title: string; onBack: () => void; darkMode?: boolean; onToggleDark?: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[navStyle.wrap, { paddingTop: insets.top, backgroundColor: darkMode ? DARK.bg : '#fff' }]}>
+    <View style={[navStyle.wrap, { paddingTop: insets.top, backgroundColor: darkMode ? DARK.bg : '#fff', borderBottomColor: darkMode ? DARK.border : '#E5E7EB' }]}>
       <TouchableOpacity
         onPress={onBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -468,7 +468,7 @@ export default function HomeScreen() {
   let content;
   if (screen === 'inicio') {
     content = (
-      <View style={[s0.wrap, { backgroundColor: darkMode ? '#1A0A2E' : '#E5E7EB', justifyContent: 'space-between' }]}>
+      <View style={[s0.wrap, { backgroundColor: darkMode ? DARK.bg : '#fff', justifyContent: 'space-between' }]}>
         <StatusBar style="light" />
         <View style={{ position: 'absolute', top: 50, right: 16, zIndex: 10 }}>
           <TouchableOpacity onPress={() => setDarkMode(!darkMode)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={navStyle.backBtn}>
@@ -486,10 +486,10 @@ export default function HomeScreen() {
         </View>
         <View style={s0.buttons}>
           <TouchableOpacity style={[s0.primaryBtn, { backgroundColor: '#5B4FDB' }]} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
-            <Text style={[s0.primaryBtnText, { color: '#fff' }]}>Crear un plan ✨</Text>
+            <Text style={[s0.primaryBtnText, { color: darkMode ? '#cccccc' : '#fff' }]}>Crear un plan ✨</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s0.ghostBtn, darkMode ? { backgroundColor: 'rgba(255,255,255,0.05)' } : { backgroundColor: 'rgba(91,79,219,0.05)', borderColor: 'rgba(91,79,219,0.15)' }]} onPress={() => setScreen('join')}>
-            <Text style={[s0.ghostBtnText, { color: '#4A3DBF' }]}>Tengo un código de invitación</Text>
+            <Text style={[s0.ghostBtnText, { color: darkMode ? '#cccccc' : '#4A3DBF' }]}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -565,7 +565,7 @@ export default function HomeScreen() {
                   setCustomEndHour(p.endHour);
                 }}
               >
-                <Text style={[s1.durOptText, darkMode && { color: DARK.textSecondary }, periodIdx === i && s1.durOptTextSel]}>
+                <Text style={[s1.durOptText, darkMode && { color: DARK.textSecondary }, periodIdx === i && s1.durOptTextSel, darkMode && periodIdx === i && { color: '#cccccc' }]}>
                   {p.label}
                 </Text>
               </TouchableOpacity>
@@ -605,7 +605,8 @@ export default function HomeScreen() {
                     <View key={i} style={s1.hourPickerItem}>
                       <Text style={[
                         s1.hourPickerText,
-                        i === desdeCenterRef.current && s1.hourPickerTextSel
+                        i === desdeCenterRef.current && s1.hourPickerTextSel,
+                        darkMode && { color: i === desdeCenterRef.current ? '#fff' : DARK.textSecondary }
                       ]}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`}</Text>
                     </View>
                   ))}
@@ -642,7 +643,8 @@ export default function HomeScreen() {
                     <View key={i} style={s1.hourPickerItem}>
                       <Text style={[
                         s1.hourPickerText,
-                        i === hastaCenterRef.current && s1.hourPickerTextSel
+                        i === hastaCenterRef.current && s1.hourPickerTextSel,
+                        darkMode && { color: i === hastaCenterRef.current ? '#fff' : DARK.textSecondary }
                       ]}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : i < 24 ? `${i - 12}:00 PM` : '12:00 AM'}</Text>
                     </View>
                   ))}
@@ -660,6 +662,8 @@ export default function HomeScreen() {
               onChange={onDateChange}
               minimumDate={showDatePicker === 'to' && fromDate ? fromDate : undefined}
               maximumDate={showDatePicker === 'from' && toDate ? toDate : undefined}
+              themeVariant={darkMode ? 'dark' : 'light'}
+              textColor={darkMode ? '#fff' : undefined}
             />
           </View>
         )}
@@ -673,7 +677,7 @@ export default function HomeScreen() {
               setShowDatePicker(null);
             }}
           >
-            <Text style={s1.pickerDoneText}>Listo</Text>
+            <Text style={[s1.pickerDoneText, darkMode && { color: '#cccccc' }]}>Listo</Text>
           </TouchableOpacity>
         )}
         <View style={s1.bottom}>
@@ -728,7 +732,7 @@ export default function HomeScreen() {
                   Alert.alert('Copiado', 'Código copiado');
                 }}
               >
-                <Text style={s2.copyBtnText}>Copiar</Text>
+                <Text style={[s2.copyBtnText, darkMode && { color: '#cccccc' }]}>Copiar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -785,10 +789,10 @@ export default function HomeScreen() {
               setScreen('heatmap');
             }
           }}>
-            <Text style={s2.nextBtnText}>📆 Conectar calendario</Text>
+            <Text style={[s2.nextBtnText, darkMode && { color: '#cccccc' }]}>📆 Conectar calendario</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s3.manualBtn, { marginTop: 6 }]} onPress={() => setScreen('blockout')}>
-            <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
+          <TouchableOpacity style={[s3.manualBtn, { marginTop: 6 }, darkMode && { backgroundColor: DARK.card }]} onPress={() => setScreen('blockout')}>
+            <Text style={[s3.manualBtnText, darkMode && { color: DARK.text }]}>Poner mis horarios manualmente</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -878,7 +882,7 @@ export default function HomeScreen() {
               }
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
+            <Text style={{ color: darkMode ? '#cccccc' : '#fff', fontSize: 17, fontWeight: '600' }}>
               {joining ? 'Buscando...' : 'Unirse'}
             </Text>
           </TouchableOpacity>
@@ -976,7 +980,7 @@ export default function HomeScreen() {
         </View>
         <View style={s7.bottom}>
           <TouchableOpacity style={s7.saveBtn} onPress={() => { calendarConnected.current = true; setCompletedSteps(prev => [...prev, 'invitar']); setScreen('heatmap'); }}>
-            <Text style={s7.saveBtnText}>Siguiente →</Text>
+            <Text style={[s7.saveBtnText, darkMode && { color: '#cccccc' }]}>Siguiente →</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1100,13 +1104,13 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
-        <TouchableOpacity style={s4.editBlockBtn} onPress={() => setScreen('blockout')}>
-          <Text style={s4.editBlockBtnText}>
-            {userGrid.some(r => r.some(c => c)) ? 'Editar horarios ocupados ✏️' : 'Bloquear horarios ✏️'}
+        <TouchableOpacity style={[s4.editBlockBtn, darkMode && { backgroundColor: DARK.card }]} onPress={() => setScreen('blockout')}>
+          <Text style={[s4.editBlockBtnText, darkMode && { color: DARK.textSecondary }]}>
+            Editar horarios ocupados ✏️
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
-          <Text style={s4.actionBtnText}>Horarios recomendados ✨</Text>
+          <Text style={[s4.actionBtnText, darkMode && { color: '#cccccc' }]}>Horarios recomendados ✨</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1156,7 +1160,7 @@ export default function HomeScreen() {
                         <Text style={s5.cardTime}>{o.time}</Text>
                       </View>
                       <View style={[s5.badge, { backgroundColor: o.color }]}>
-                        <Text style={s5.badgeText}>{o.count}/{totalP}</Text>
+                        <Text style={[s5.badgeText, darkMode && { color: '#cccccc' }]}>{o.count}/{totalP}</Text>
                       </View>
                     </View>
                     <View style={s5.cardBottom}>
@@ -1182,7 +1186,7 @@ export default function HomeScreen() {
                             setShowModal(true);
                           }}
                         >
-                          <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
+                          <Text style={[s5.chooseBtnText, darkMode && { color: '#cccccc' }]}>Elegir este ✓</Text>
                         </TouchableOpacity>
                       ) : (
                         <Text style={[s5.canText, { color: o.color }]}>{o.count}/{totalP} disponibles</Text>
@@ -1241,7 +1245,7 @@ export default function HomeScreen() {
         </ScrollView>
         <View style={s6.bottom}>
           <TouchableOpacity style={s6.gcalBtn} onPress={handleAddToGoogleCalendar}>
-            <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
+            <Text style={[s6.gcalBtnText, darkMode && { color: '#cccccc' }]}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
             const dia = confirmedDay || 'Por confirmar';
@@ -1270,11 +1274,11 @@ export default function HomeScreen() {
             activeOpacity={canGo ? 0.6 : 1}
             onPress={() => { if (canGo) navigateToStep(step.key); }}
           >
-            <View style={[navStyle.dot, darkMode && { backgroundColor: DARK.elevated }, isCurrent && navStyle.dotCurrent, isCurrent && darkMode && { backgroundColor: '#2a2040' }, isDone && !isCurrent && navStyle.dotDone, isDone && !isCurrent && darkMode && { backgroundColor: '#1a3a2a' }]}>
+            <View style={[navStyle.dot, darkMode && { backgroundColor: DARK.elevated }, isCurrent && navStyle.dotCurrent, isCurrent && darkMode && { backgroundColor: '#5B4FDB' }, isDone && !isCurrent && navStyle.dotDone, isDone && !isCurrent && darkMode && { backgroundColor: '#3D5A4E' }]}>
               <Text style={navStyle.dotIcon}>{step.icon}</Text>
               {isDone && (
                 <View style={navStyle.checkBadge}>
-                  <Text style={navStyle.checkText}>✓</Text>
+                  <Text style={[navStyle.checkText, darkMode && { color: '#cccccc' }]}>✓</Text>
                 </View>
               )}
             </View>
@@ -1324,7 +1328,7 @@ export default function HomeScreen() {
                   setScreen('confirmado');
                 }}
               >
-                <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
+                <Text style={[modalStyle.confirmBtnText, darkMode && { color: '#cccccc' }]}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>
