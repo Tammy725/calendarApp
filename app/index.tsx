@@ -62,12 +62,11 @@ const STATUS_TEXT: Record<string, string> = {
 
 const NAV_STEPS = [
   { key: 'crear', label: 'Plan', icon: '📋' },
-  { key: 'invitar', label: 'Invitar', icon: '👥' },
-  { key: 'conectar', label: 'Conectar', icon: '📅' },
+  { key: 'invitar', label: 'Integrantes', icon: '👥' },
   { key: 'heatmap', label: 'Calendario', icon: '⏰' },
   { key: 'confirmado', label: 'Resumen', icon: '📝' },
 ];
-const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
+const MAIN_SCREENS = new Set(['crear', 'invitar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
 
 function TopNav({ title, onBack, darkMode, onToggleDark }: { title: string; onBack: () => void; darkMode?: boolean; onToggleDark?: () => void }) {
   const insets = useSafeAreaInsets();
@@ -204,10 +203,10 @@ export default function HomeScreen() {
   function navigateToStep(key: string) {
     const idx = NAV_STEPS.findIndex(s => s.key === key);
     if (idx === -1) return;
-    const prereq = [true, !!(planName && fromDate && toDate), !!roomCode, !!calendarConnected.current, !!confirmedDay];
+    const prereq = [true, !!roomCode, !!calendarConnected.current, !!confirmedDay];
     const canGo = idx === 0 || (idx > 0 && prereq.slice(1, idx + 1).every(Boolean)) || key === screen;
     if (canGo) {
-      setScreen(key as 'crear' | 'invitar' | 'conectar' | 'heatmap' | 'confirmado' | 'blockout' | 'mejores' | 'inicio' | 'join');
+      setScreen(key as 'crear' | 'invitar' | 'heatmap' | 'confirmado' | 'blockout' | 'mejores' | 'inicio' | 'join');
     }
   }
 
@@ -476,7 +475,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setScreen('crear'); }}>
+          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
             <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s0.ghostBtn} onPress={() => setScreen('join')}>
@@ -765,59 +764,20 @@ export default function HomeScreen() {
             );
           })}
         </ScrollView>
-        <View style={s2.bottom}>
-          <TouchableOpacity style={s2.nextBtn} onPress={() => { setScreen('conectar'); setCompletedSteps(prev => [...prev, 'invitar']); }}>
-            <Text style={s2.nextBtnText}>Siguiente →</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  if (screen === 'conectar') {
-    content = (
-      <View style={[s3.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
-        <StatusBar style={darkMode ? 'light' : 'dark'} />
-        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Conectar" onBack={() => setScreen('invitar')} />
-        <View style={s3.bodyTop}>
-          <View style={s3.calIcon}>
-            <Text style={{ fontSize: 44 }}>📅</Text>
-          </View>
-          <Text style={s3.title}>Conecta tu calendario</Text>
-          <Text style={s3.subtitle}>
-            Solo vemos cuándo estás ocupada.{'\n'}
-            <Text style={{ color: '#10B981', fontWeight: '700' }}>
-              Solo creamos eventos cuando vos lo decidas.
-            </Text>
-          </Text>
-          <View style={s3.privacyList}>
-            {[
-              { icon: '📅', text: 'Sincroniza tu calendario automáticamente' },
-              { icon: '🔒', text: 'Solo lectura — sin cambios' },
-              { icon: '👁️', text: 'El grupo solo ve libre / ocupado' },
-            ].map((item) => (
-              <View key={item.text} style={s3.privacyItem}>
-                <Text style={s3.privacyIcon}>{item.icon}</Text>
-                <Text style={s3.privacyText}>{item.text}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-        <View style={s3.bottomBtns}>
-          <TouchableOpacity style={s3.googleBtn} onPress={async () => {
+        <View style={[s2.bottom, { paddingTop: 0 }]}>
+          <TouchableOpacity style={s2.nextBtn} onPress={async () => {
             const { status } = await Calendar.requestCalendarPermissionsAsync();
             if (status === 'granted') {
               await fetchDeviceCalendarEvents();
               calendarConnected.current = true;
-              setCompletedSteps(prev => [...prev, 'conectar']);
+              setCompletedSteps(prev => [...prev, 'invitar']);
               pendingAlert.current = true;
               setScreen('heatmap');
             }
           }}>
-            <Text style={{ fontSize: 14 }}>📆</Text>
-            <Text style={s3.googleText}> Conectar calendario</Text>
+            <Text style={s2.nextBtnText}>📆 Conectar calendario</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s3.manualBtn} onPress={() => setScreen('blockout')}>
+          <TouchableOpacity style={[s3.manualBtn, { marginTop: 6 }]} onPress={() => setScreen('blockout')}>
             <Text style={s3.manualBtnText}>Poner mis horarios manualmente</Text>
           </TouchableOpacity>
         </View>
@@ -917,7 +877,7 @@ export default function HomeScreen() {
     content = (
       <View style={[s7.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
-        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mis horarios" onBack={() => setScreen('conectar')} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mis horarios" onBack={() => setScreen('invitar')} />
         <View style={s7.header}>
           <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
           <Text style={s7.subtitle}>Marcá cuándo estás ocupada para el plan</Text>
@@ -1001,7 +961,7 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={s7.bottom}>
-          <TouchableOpacity style={s7.saveBtn} onPress={() => setScreen('heatmap')}>
+          <TouchableOpacity style={s7.saveBtn} onPress={() => { calendarConnected.current = true; setCompletedSteps(prev => [...prev, 'invitar']); setScreen('heatmap'); }}>
             <Text style={s7.saveBtnText}>Siguiente →</Text>
           </TouchableOpacity>
         </View>
@@ -1015,7 +975,7 @@ export default function HomeScreen() {
     content = (
       <View style={[s4.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
-        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Disponibilidad" onBack={() => setScreen('conectar')} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Disponibilidad" onBack={() => setScreen('invitar')} />
         <View style={s4.header}>
           <View>
             <Text style={s4.heatTitle}>Disponibilidad</Text>
@@ -1287,7 +1247,7 @@ export default function HomeScreen() {
       {NAV_STEPS.map((step, i) => {
         const isCurrent = step.key === screen;
         const isDone = navCompleted[i];
-        const prereq = [true, !!(planName && fromDate && toDate), !!roomCode, !!calendarConnected.current, !!confirmedDay];
+    const prereq = [true, !!roomCode, !!calendarConnected.current, !!confirmedDay];
         const canGo = i === 0 || (i > 0 && prereq.slice(1, i + 1).every(Boolean)) || isCurrent;
         return (
           <TouchableOpacity
@@ -1346,7 +1306,7 @@ export default function HomeScreen() {
                   setConfirmedDay(modalDay);
                   setConfirmedTime(modalTime);
                   setShowModal(false);
-                  setCompletedSteps(prev => [...prev, 'heatmap']);
+                  setCompletedSteps(prev => [...prev, 'heatmap', 'confirmado']);
                   setScreen('confirmado');
                 }}
               >
@@ -1449,7 +1409,7 @@ const navStyle = StyleSheet.create({
   item: {
     alignItems: 'center',
     gap: 4,
-    width: 56,
+    width: 68,
   },
   dot: {
     width: 32,
@@ -1958,12 +1918,25 @@ const s3 = StyleSheet.create({
     color: '#111827',
   },
   manualBtn: {
-    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E8ED',
+    shadowColor: '#5B4FDB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   manualBtnText: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+    letterSpacing: 0.3,
   },
 });
 
