@@ -44,25 +44,6 @@ const TIME_PERIODS = [
   { label: 'Todo el día', startHour: 0, endHour: 24 },
 ];
 
-function makeGrid(cols: number): number[][] {
-  return Array.from({ length: 24 }, () => Array(cols).fill(4));
-}
-
-const CELL_COLORS: Record<number, string> = {
-  4: '#10B981',
-  3: '#D1FAE5',
-  2: '#FEF3C7',
-  1: '#F97316',
-  0: '#E5E7EB',
-};
-
-const CELL_LABELS: Record<number, string> = {
-  4: '4/4',
-  3: '3/4',
-  2: '2/4',
-  1: '1/4',
-  0: '0/4',
-};
 
 const OPTIONS = [
   { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
@@ -287,15 +268,16 @@ export default function HomeScreen() {
   }
 
   function getModifiedHeatmap(): number[][] {
-    const base = makeGrid(colCount);
-    return base.map((row, ri) =>
-      row.map((v, ci) => {
-        let val = v;
-        if (userGrid[ri]?.[ci]) val = Math.max(0, val - 1);
-        if (googleBusyGrid[ri]?.[ci]) val = Math.max(0, val - 1);
-        return val;
-      })
-    );
+    const cols = colCount;
+    const grid = Array.from({ length: 24 }, () => Array(cols).fill(0));
+    for (let ri = 0; ri < 24; ri++) {
+      for (let ci = 0; ci < cols; ci++) {
+        if (userGrid[ri]?.[ci] && !googleBusyGrid[ri]?.[ci]) {
+          grid[ri][ci]++;
+        }
+      }
+    }
+    return grid;
   }
 
   async function fetchDeviceCalendarEvents() {
@@ -928,10 +910,10 @@ export default function HomeScreen() {
     content = (
       <View style={s7.wrap}>
         <StatusBar style="dark" />
-        <TopNav title="Mis horarios" onBack={() => setScreen('conectar')} />
+        <TopNav title="Tu disponibilidad" onBack={() => setScreen('conectar')} />
         <View style={s7.header}>
-          <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
-          <Text style={s7.subtitle}>Así aparecerán como ocupadas en tu disponibilidad</Text>
+          <Text style={s7.title}>Toca las horas que SÍ puedes ✅</Text>
+          <Text style={s7.subtitle}>Marcá cuándo estás libre para el plan</Text>
         </View>
         <View style={s7.gridContainer}>
           <View style={s7.paginationRow}>
@@ -982,17 +964,17 @@ export default function HomeScreen() {
                       </View>
                     );
                   }
-                  const blocked = userGrid[ri]?.[safePage * PAGE_SIZE + ci] ?? false;
+                  const available = userGrid[ri]?.[safePage * PAGE_SIZE + ci] ?? false;
                   return (
                     <TouchableOpacity
                       key={ci}
                       style={[s7.heatCell, {
-                        backgroundColor: blocked ? '#DC2626' : '#F9FAFB',
-                        borderColor: blocked ? '#DC2626' : '#E5E7EB',
+                        backgroundColor: available ? '#10B981' : '#F9FAFB',
+                        borderColor: available ? '#10B981' : '#E5E7EB',
                       }]}
                       onPress={() => toggleUserCell(ri, safePage * PAGE_SIZE + ci)}
                     >
-                      {blocked && <Text style={s7.cellX}>✕</Text>}
+                      {available && <Text style={s7.cellX}>✓</Text>}
                     </TouchableOpacity>
                   );
                 })}
@@ -1003,12 +985,12 @@ export default function HomeScreen() {
         </View>
         <View style={s7.legend}>
           <View style={s7.legendItem}>
-            <View style={[s7.legendDot, { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1 }]} />
+            <View style={[s7.legendDot, { backgroundColor: '#10B981' }]} />
             <Text style={s7.legendLabel}>Disponible</Text>
           </View>
           <View style={s7.legendItem}>
-            <View style={[s7.legendDot, { backgroundColor: '#DC2626' }]} />
-            <Text style={s7.legendLabel}>Ocupado</Text>
+            <View style={[s7.legendDot, { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1 }]} />
+            <Text style={s7.legendLabel}>No disponible</Text>
           </View>
         </View>
         <View style={s7.bottom}>
@@ -1022,6 +1004,7 @@ export default function HomeScreen() {
 
   if (screen === 'heatmap') {
     const modifiedHeatmap = getModifiedHeatmap();
+    const totalP = participants.length || 1;
     content = (
       <View style={s4.wrap}>
         <StatusBar style="dark" />
@@ -1097,11 +1080,13 @@ export default function HomeScreen() {
                       );
                     }
                     const absCi = safePage * PAGE_SIZE + vi;
-                    const v = modifiedHeatmap[ri]?.[absCi] ?? 4;
+                    const v = modifiedHeatmap[ri]?.[absCi] ?? 0;
+                    const pct = totalP > 0 ? v / totalP : 0;
+                    const ciCol = pct >= 0.75 ? '#10B981' : pct >= 0.5 ? '#D1FAE5' : pct >= 0.25 ? '#FEF3C7' : '#E5E7EB';
                     return (
                       <TouchableOpacity
                         key={vi}
-                        style={[s4.heatCell, { backgroundColor: CELL_COLORS[Math.floor(v)] }]}
+                        style={[s4.heatCell, { backgroundColor: ciCol }]}
                         onPress={() => {
                           setModalDay(formatCellDay(absCi));
                           setModalTime(formatCellTime(ri));
@@ -1109,9 +1094,9 @@ export default function HomeScreen() {
                         }}
                       >
                         <Text style={[s4.cellLabel, {
-                          color: v >= 3 ? '#065F46' : v >= 2 ? '#92400E' : '#9CA3AF',
+                          color: pct >= 0.75 ? '#065F46' : pct >= 0.5 ? '#92400E' : '#9CA3AF',
                         }]}>
-                          {CELL_LABELS[Math.floor(v)]}
+                          {v}/{totalP}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -1123,10 +1108,10 @@ export default function HomeScreen() {
         </View>
         <View style={s4.legend}>
           {[
-            { color: '#10B981', label: '4/4' },
-            { color: '#D1FAE5', label: '3/4' },
-            { color: '#FEF3C7', label: '2/4' },
-            { color: '#E5E7EB', label: '0/4' },
+            { color: '#10B981', label: `${totalP}/${totalP}` },
+            { color: '#D1FAE5', label: `${Math.ceil(totalP * 0.75)}/${totalP}` },
+            { color: '#FEF3C7', label: `${Math.ceil(totalP * 0.5)}/${totalP}` },
+            { color: '#E5E7EB', label: `0/${totalP}` },
           ].map((l) => (
             <View key={l.label} style={s4.legendItem}>
               <View style={[s4.legendDot, { backgroundColor: l.color }]} />
@@ -1136,7 +1121,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity style={s4.editBlockBtn} onPress={() => setScreen('blockout')}>
           <Text style={s4.editBlockBtnText}>
-            {userGrid.some(r => r.some(c => c)) ? 'Editar horarios ocupados ✏️' : 'Agregar horarios ocupados ✏️'}
+            {userGrid.some(r => r.some(c => c)) ? 'Editar tu disponibilidad ✏️' : 'Marcar tu disponibilidad ✏️'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
@@ -1148,7 +1133,8 @@ export default function HomeScreen() {
 
   if (screen === 'mejores') {
     const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    const filteredOptions = OPTIONS.filter(o => o.count === 4);
+    const totalP = participants.length || 1;
+    const filteredOptions = OPTIONS.filter(o => o.count === 4).map(o => ({ ...o, count: totalP }));
     const groups: Record<string, typeof OPTIONS> = {};
     filteredOptions.forEach(o => {
       if (!groups[o.day]) groups[o.day] = [];
@@ -1173,7 +1159,7 @@ export default function HomeScreen() {
                 <View style={s5.sectionLine} />
               </View>
               {options.map((o, i) => {
-                const selected = selectedOption === o;
+                const selected = selectedOption?.day === o.day && selectedOption?.time === o.time;
                 return (
                   <TouchableOpacity
                     key={`${o.day}-${o.time}`}
@@ -1189,19 +1175,22 @@ export default function HomeScreen() {
                         <Text style={s5.cardTime}>{o.time}</Text>
                       </View>
                       <View style={[s5.badge, { backgroundColor: o.color }]}>
-                        <Text style={s5.badgeText}>{o.count}/4</Text>
+                        <Text style={s5.badgeText}>{o.count}/{totalP}</Text>
                       </View>
                     </View>
                     <View style={s5.cardBottom}>
                       <View style={s5.avatarsRow}>
-                        {PEOPLE.slice(0, o.count).map((p, j) => (
-                          <View key={p.name} style={[s5.avaSm, {
-                            backgroundColor: p.bg,
-                            marginLeft: j > 0 ? -6 : 0,
-                          }]}>
-                            <Text style={[s5.avaSmText, { color: p.color }]}>{p.initial}</Text>
-                          </View>
-                        ))}
+                        {(participants.length ? participants : PEOPLE.slice(0, o.count)).map((p, j) => {
+                          const pc = j === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(j - 1) % AVATAR_COLORS.length];
+                          return (
+                            <View key={p.name} style={[s5.avaSm, {
+                              backgroundColor: pc.bg,
+                              marginLeft: j > 0 ? -6 : 0,
+                            }]}>
+                              <Text style={[s5.avaSmText, { color: pc.color }]}>{p.initial}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                       {selected ? (
                         <TouchableOpacity
@@ -1215,7 +1204,7 @@ export default function HomeScreen() {
                           <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
                         </TouchableOpacity>
                       ) : (
-                        <Text style={[s5.canText, { color: o.color }]}>{o.count}/4 disponibles</Text>
+                        <Text style={[s5.canText, { color: o.color }]}>{o.count}/{totalP} disponibles</Text>
                       )}
                     </View>
                   </TouchableOpacity>
