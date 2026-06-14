@@ -488,8 +488,8 @@ export default function HomeScreen() {
           <TouchableOpacity style={[s0.primaryBtn, { backgroundColor: '#5B4FDB' }]} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
             <Text style={[s0.primaryBtnText, { color: '#fff' }]}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s0.ghostBtn, darkMode ? {} : { backgroundColor: 'rgba(91,79,219,0.08)', borderColor: 'rgba(91,79,219,0.18)' }]} onPress={() => setScreen('join')}>
-            <Text style={[s0.ghostBtnText, { color: darkMode ? '#fff' : '#5B4FDB' }]}>Tengo un código de invitación</Text>
+          <TouchableOpacity style={[s0.ghostBtn, darkMode ? { backgroundColor: 'rgba(255,255,255,0.05)' } : { backgroundColor: 'rgba(91,79,219,0.05)', borderColor: 'rgba(91,79,219,0.15)' }]} onPress={() => setScreen('join')}>
+            <Text style={[s0.ghostBtnText, { color: '#4A3DBF' }]}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1544,6 +1544,7 @@ const s0 = StyleSheet.create({
   ghostBtnText: {
     color: '#fff',
     fontSize: 17,
+    fontWeight: '600',
   },
 });
 
