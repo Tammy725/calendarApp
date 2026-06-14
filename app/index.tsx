@@ -2066,7 +2066,6 @@ const s4 = StyleSheet.create({
   heatCell: {
     flex: 1,
     height: 32,
-    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2491,7 +2490,6 @@ const s7 = StyleSheet.create({
   heatCell: {
     flex: 1,
     height: 32,
-    borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
