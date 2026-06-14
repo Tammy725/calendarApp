@@ -45,6 +45,16 @@ const TIME_PERIODS = [
 ];
 
 
+const DARK = {
+  bg: '#121212',
+  card: '#1e1e1e',
+  elevated: '#2a2a2a',
+  border: '#2a2a2a',
+  text: '#e4e4e4',
+  textSecondary: '#a0a0a0',
+  textMuted: '#6b6b6b',
+};
+
 const OPTIONS = [
   { day: 'Viernes 17 ene', time: '6:00 – 8:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
   { day: 'Viernes 17 ene', time: '8:00 – 10:00 PM · 2h', count: 4, color: '#10B981', bg: '#D1FAE5' },
@@ -71,15 +81,15 @@ const MAIN_SCREENS = new Set(['crear', 'invitar', 'heatmap', 'blockout', 'mejore
 function TopNav({ title, onBack, darkMode, onToggleDark }: { title: string; onBack: () => void; darkMode?: boolean; onToggleDark?: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[navStyle.wrap, { paddingTop: insets.top, backgroundColor: darkMode ? '#1a1a2e' : '#fff' }]}>
+    <View style={[navStyle.wrap, { paddingTop: insets.top, backgroundColor: darkMode ? DARK.bg : '#fff' }]}>
       <TouchableOpacity
         onPress={onBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={navStyle.backBtn}
       >
-        <Text style={[navStyle.back, { color: darkMode ? '#e0e0e0' : '#111827' }]}>{'←'}</Text>
+        <Text style={[navStyle.back, { color: darkMode ? DARK.text : '#111827' }]}>{'←'}</Text>
       </TouchableOpacity>
-      <Text style={[navStyle.title, { color: darkMode ? '#e0e0e0' : '#111827' }]}>{title}</Text>
+      <Text style={[navStyle.title, { color: darkMode ? DARK.text : '#111827' }]}>{title}</Text>
       <TouchableOpacity
         onPress={onToggleDark}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -458,31 +468,31 @@ export default function HomeScreen() {
   let content;
   if (screen === 'inicio') {
     content = (
-      <LinearGradient
-        colors={['#3730A3', '#7C3AED', '#9D174D']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s0.wrap}
-      >
+      <View style={[s0.wrap, { backgroundColor: darkMode ? '#1A0A2E' : '#E5E7EB', justifyContent: 'space-between' }]}>
         <StatusBar style="light" />
+        <View style={{ position: 'absolute', top: 50, right: 16, zIndex: 10 }}>
+          <TouchableOpacity onPress={() => setDarkMode(!darkMode)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={navStyle.backBtn}>
+            <Text style={{ fontSize: 22 }}>{darkMode ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+        </View>
         <View style={s0.center}>
-          <View style={s0.logo}>
+          <View style={[s0.logo, darkMode ? {} : { backgroundColor: 'rgba(91,79,219,0.1)', borderColor: 'rgba(91,79,219,0.25)' }]}>
             <Text style={s0.logoText}>📅</Text>
           </View>
-          <Text style={s0.title}>Calendario compartido</Text>
-          <Text style={s0.subtitle}>
+          <Text style={[s0.title, { color: darkMode ? '#cccccc' : '#111827' }]}>Calendario compartido</Text>
+          <Text style={[s0.subtitle, { color: darkMode ? 'rgba(255,255,255,0.65)' : '#6B7280' }]}>
             Encuentra el momento perfecto{'\n'}para quedar con tu gente
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={s0.primaryBtn} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
-            <Text style={s0.primaryBtnText}>Crear un plan ✨</Text>
+          <TouchableOpacity style={[s0.primaryBtn, { backgroundColor: '#5B4FDB' }]} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
+            <Text style={[s0.primaryBtnText, { color: '#fff' }]}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s0.ghostBtn} onPress={() => setScreen('join')}>
-            <Text style={s0.ghostBtnText}>Tengo un código de invitación</Text>
+          <TouchableOpacity style={[s0.ghostBtn, darkMode ? {} : { backgroundColor: 'rgba(91,79,219,0.08)', borderColor: 'rgba(91,79,219,0.18)' }]} onPress={() => setScreen('join')}>
+            <Text style={[s0.ghostBtnText, { color: darkMode ? '#fff' : '#5B4FDB' }]}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -505,66 +515,66 @@ export default function HomeScreen() {
     };
 
     content = (
-      <View style={[s1.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s1.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
         <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent} bounces={false}>
-          <Text style={[s1.sectionLabel, { marginTop: 0 }]}>Nuevo plan</Text>
-          <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
-          <Text style={[s1.sectionLabel, { marginTop: 0 }]}>Nombre del plan</Text>
+          <Text style={[s1.sectionLabel, { marginTop: 0, color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Nuevo plan</Text>
+          <Text style={[s1.heading, { color: darkMode ? DARK.text : '#111827' }]}>¿Cuál es el plan? 🎉</Text>
+          <Text style={[s1.sectionLabel, { marginTop: 0, color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Nombre del plan</Text>
           <TextInput
-            style={s1.inputActive}
+            style={[s1.inputActive, darkMode && { backgroundColor: DARK.elevated, borderColor: DARK.border, color: DARK.text }]}
             value={planName}
             onChangeText={setPlanName}
             autoCapitalize="characters"
             autoCorrect={true}
             spellCheck={true}
             placeholder="Ej: CENA DE CUMPLEAÑOS 🎂"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={darkMode ? DARK.textMuted : '#9CA3AF'}
           />
-          <View style={{ borderBottomWidth: 2, borderBottomColor: '#D1D5DB', marginVertical: 12 }} />
-          <Text style={s1.sectionLabel}>¿Cuándo podría ser?</Text>
+          <View style={{ borderBottomWidth: 2, borderBottomColor: darkMode ? DARK.border : '#D1D5DB', marginVertical: 12 }} />
+          <Text style={[s1.sectionLabel, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>¿Cuándo podría ser?</Text>
           <View style={s1.dateRow}>
-            <TouchableOpacity style={s1.dateBox} onPress={() => {
+            <TouchableOpacity style={[s1.dateBox, darkMode && { backgroundColor: DARK.elevated, borderColor: DARK.border }]} onPress={() => {
               const d = new Date();
               pickedDateRef.current = d;
               setTempDate(d); setShowDatePicker('from');
             }}>
-              <Text style={s1.dateLbl}>Desde</Text>
-              <Text style={s1.dateVal}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
+              <Text style={[s1.dateLbl, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Desde</Text>
+              <Text style={[s1.dateVal, { color: darkMode ? DARK.text : '#111827' }]}>{showDatePicker === 'from' ? formatDate(tempDate) : (fromDate ? formatDate(fromDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s1.dateBox} onPress={() => {
+            <TouchableOpacity style={[s1.dateBox, darkMode && { backgroundColor: DARK.elevated, borderColor: DARK.border }]} onPress={() => {
               const d = new Date();
               pickedDateRef.current = d;
               setTempDate(d); setShowDatePicker('to');
             }}>
-              <Text style={s1.dateLbl}>Hasta</Text>
-              <Text style={s1.dateVal}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
+              <Text style={[s1.dateLbl, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Hasta</Text>
+              <Text style={[s1.dateVal, { color: darkMode ? DARK.text : '#111827' }]}>{showDatePicker === 'to' ? formatDate(tempDate) : (toDate ? formatDate(toDate) : 'Elegir fecha')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ borderBottomWidth: 2, borderBottomColor: '#D1D5DB', marginVertical: 12 }} />
-          <Text style={s1.sectionLabel}>¿A qué hora podría ser?</Text>
+          <View style={{ borderBottomWidth: 2, borderBottomColor: darkMode ? DARK.border : '#D1D5DB', marginVertical: 12 }} />
+          <Text style={[s1.sectionLabel, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>¿A qué hora podría ser?</Text>
           <View style={s1.durRow}>
             {TIME_PERIODS.map((p, i) => (
               <TouchableOpacity
                 key={p.label}
-                style={[s1.durOpt, periodIdx === i && s1.durOptSel]}
+                style={[s1.durOpt, darkMode && { backgroundColor: DARK.elevated }, periodIdx === i && s1.durOptSel]}
                 onPress={() => {
                   setPeriodIdx(i);
                   setCustomStartHour(p.startHour);
                   setCustomEndHour(p.endHour);
                 }}
               >
-                <Text style={[s1.durOptText, periodIdx === i && s1.durOptTextSel]}>
+                <Text style={[s1.durOptText, darkMode && { color: DARK.textSecondary }, periodIdx === i && s1.durOptTextSel]}>
                   {p.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-          {periodIdx >= 0 && <View style={s1.hourPickerRow}>
+          {periodIdx >= 0 && <View style={[s1.hourPickerRow, darkMode && { borderTopColor: DARK.border }]}>
             <View style={s1.hourPickerCol}>
-              <Text style={s1.hourPickerLabel}>Desde</Text>
-              <View style={s1.hourPickerFrame}>
+              <Text style={[s1.hourPickerLabel, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Desde</Text>
+              <View style={[s1.hourPickerFrame, darkMode && { backgroundColor: DARK.elevated }]}>
                 <ScrollView
                   ref={desdeRef}
                   showsVerticalScrollIndicator={false}
@@ -603,8 +613,8 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={s1.hourPickerCol}>
-              <Text style={s1.hourPickerLabel}>Hasta</Text>
-              <View style={s1.hourPickerFrame}>
+              <Text style={[s1.hourPickerLabel, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Hasta</Text>
+              <View style={[s1.hourPickerFrame, darkMode && { backgroundColor: DARK.elevated }]}>
                 <ScrollView
                   ref={hastaRef}
                   showsVerticalScrollIndicator={false}
@@ -698,19 +708,19 @@ export default function HomeScreen() {
 
   if (screen === 'invitar') {
     content = (
-      <View style={[s2.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s2.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Invitar" onBack={() => setScreen('crear')} />
         <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent} bounces={false}>
-          <Text style={s2.heading}>Integrantes 👥</Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
-          <View style={s2.linkCard}>
-            <Text style={s2.linkCardLabel}>Código y enlace de invitación</Text>
+          <Text style={[s2.heading, { color: darkMode ? DARK.text : '#111827' }]}>Integrantes 👥</Text>
+          <Text style={{ fontSize: 14, color: darkMode ? DARK.textSecondary : '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
+          <View style={[s2.linkCard, darkMode && { backgroundColor: DARK.card, borderColor: DARK.border }]}>
+            <Text style={[s2.linkCardLabel, { color: darkMode ? DARK.text : '#5B4FDB' }]}>Código y enlace de invitación</Text>
             <View style={s2.linkRow}>
-              <Text style={s2.linkText} numberOfLines={1}>{roomCode}</Text>
+              <Text style={[s2.linkText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]} numberOfLines={1}>{roomCode}</Text>
             </View>
             <View style={s2.linkRow}>
-                <Text style={s2.linkText} numberOfLines={1}>http://miapp.com/unirse/{roomCode}</Text>
+                <Text style={[s2.linkText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]} numberOfLines={1}>http://miapp.com/unirse/{roomCode}</Text>
               <TouchableOpacity
                 style={s2.copyBtn}
                 onPress={async () => {
@@ -722,14 +732,14 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 12, marginTop: 8 }}>Comparte el código con tus amigos:</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: darkMode ? DARK.text : '#374151', marginBottom: 12, marginTop: 8 }}>Comparte el código con tus amigos:</Text>
           <View style={s2.shareRow}>
             {[
               { icon: '💬', label: 'WhatsApp', isWa: true },
               { icon: '📱', label: 'Mensaje' },
               { icon: '📧', label: 'Email', isEmail: true },
             ].map((s) => (
-              <TouchableOpacity key={s.label} style={s2.shareBtn} onPress={async () => {
+              <TouchableOpacity key={s.label} style={[s2.shareBtn, darkMode && { backgroundColor: DARK.card, borderColor: DARK.border }]} onPress={async () => {
                 const codigo = roomCode;
                 if (s.isEmail) {
                   const subject = encodeURIComponent('Te invito a un plan en MiApp');
@@ -743,20 +753,20 @@ export default function HomeScreen() {
                 }
               }}>
                 <Text style={s2.shareIcon}>{s.icon}</Text>
-                <Text style={s2.shareLabel}>{s.label}</Text>
+                <Text style={[s2.shareLabel, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>{s.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={s2.peopleTitle}>Personas unidas · {participants.length}/{groupSize}</Text>
+          <Text style={[s2.peopleTitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Personas unidas · {participants.length}/{groupSize}</Text>
           {participants.map((p, i) => {
             const custom = customColors[p.name];
             const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
             return (
-              <View key={p.name} style={s2.personRow}>
+              <View key={p.name} style={[s2.personRow, darkMode && { borderBottomColor: DARK.border }]}>
                 <TouchableOpacity onPress={() => setEditingColorIdx(i)} style={[s2.avatar, { backgroundColor: ac.bg }]}>
                   <Text style={[s2.avatarText, { color: ac.color }]}>{p.initial}</Text>
                 </TouchableOpacity>
-                <Text style={s2.personName}>{p.name}</Text>
+                <Text style={[s2.personName, { color: darkMode ? DARK.text : '#111827' }]}>{p.name}</Text>
                 <Text style={[s2.personStatus, { color: p.status === 'conectado' ? '#10B981' : '#9CA3AF' }]}>
                   {STATUS_TEXT[p.status]}
                 </Text>
@@ -787,33 +797,37 @@ export default function HomeScreen() {
 
   if (screen === 'join') {
     content = (
-      <View style={[s2.wrap, { justifyContent: 'center', paddingBottom: 40 }, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s2.wrap, { justifyContent: 'center', paddingBottom: 40 }, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
           <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Unirse" onBack={() => setScreen('inicio')} />
         </View>
         <View style={{ padding: 24, gap: 16 }}>
-          <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
-          <Text style={{ fontSize: 16, color: '#687076', textAlign: 'center' }}>Ingresa tu nombre y el código que te compartieron</Text>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', marginTop: 8, letterSpacing: 0.6 }}>Nombre</Text>
+          <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: darkMode ? DARK.text : '#11181C' }}>Unirse a un Plan</Text>
+          <Text style={{ fontSize: 16, color: darkMode ? DARK.textSecondary : '#687076', textAlign: 'center' }}>Ingresa tu nombre y el código que te compartieron</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: darkMode ? DARK.textSecondary : '#6B7280', marginTop: 8, letterSpacing: 0.6 }}>Nombre</Text>
           <TextInput
             style={{
-              width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
-              padding: 16, fontSize: 18, color: '#11181C', textAlign: 'center',
+              width: '100%', borderWidth: 1, borderColor: darkMode ? DARK.border : '#dee2e6', borderRadius: 12,
+              padding: 16, fontSize: 18, color: darkMode ? DARK.text : '#11181C', textAlign: 'center',
+              backgroundColor: darkMode ? DARK.elevated : 'transparent',
             }}
             placeholder="Tu nombre"
+            placeholderTextColor={darkMode ? DARK.textMuted : '#9CA3AF'}
             value={joinName}
             onChangeText={setJoinName}
             autoCapitalize="words"
             autoCorrect={false}
           />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 0.6 }}>Código del plan</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: darkMode ? DARK.textSecondary : '#6B7280', letterSpacing: 0.6 }}>Código del plan</Text>
           <TextInput
             style={{
-              width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
-              padding: 16, fontSize: 20, color: '#11181C', textAlign: 'center', letterSpacing: 4,
+              width: '100%', borderWidth: 1, borderColor: darkMode ? DARK.border : '#dee2e6', borderRadius: 12,
+              padding: 16, fontSize: 20, color: darkMode ? DARK.text : '#11181C', textAlign: 'center', letterSpacing: 4,
+              backgroundColor: darkMode ? DARK.elevated : 'transparent',
             }}
             placeholder="Ej: A1B2C3"
+            placeholderTextColor={darkMode ? DARK.textMuted : '#9CA3AF'}
             value={joinInput}
             onChangeText={setJoinInput}
             autoCapitalize="characters"
@@ -875,12 +889,12 @@ export default function HomeScreen() {
 
   if (screen === 'blockout') {
     content = (
-      <View style={[s7.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s7.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mis horarios" onBack={() => setScreen('invitar')} />
         <View style={s7.header}>
-          <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
-          <Text style={s7.subtitle}>Marcá cuándo estás ocupada para el plan</Text>
+          <Text style={[s7.title, { color: darkMode ? DARK.text : '#111827' }]}>Toca las horas que NO puedes ⛔</Text>
+          <Text style={[s7.subtitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Marcá cuándo estás ocupada para el plan</Text>
         </View>
         <View style={s7.gridContainer}>
           <View style={s7.paginationRow}>
@@ -973,13 +987,13 @@ export default function HomeScreen() {
     const modifiedHeatmap = getModifiedHeatmap();
     const totalP = participants.length || 1;
     content = (
-      <View style={[s4.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s4.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Disponibilidad" onBack={() => setScreen('invitar')} />
         <View style={s4.header}>
           <View>
-            <Text style={s4.heatTitle}>Disponibilidad</Text>
-            <Text style={s4.heatSub}>{formatDateRange()}</Text>
+            <Text style={[s4.heatTitle, { color: darkMode ? DARK.text : '#111827' }]}>Disponibilidad</Text>
+            <Text style={[s4.heatSub, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>{formatDateRange()}</Text>
           </View>
           <View style={s4.avatarsRow}>
             {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
@@ -1112,12 +1126,12 @@ export default function HomeScreen() {
       return (MONTHS.indexOf(pa[2]) * 100 + parseInt(pa[1])) - (MONTHS.indexOf(pb[2]) * 100 + parseInt(pb[1]));
     });
     content = (
-      <View style={[s5.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s5.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
         <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mejores horarios" onBack={() => setScreen('heatmap')} />
         <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent} bounces={false}>
-          <Text style={s5.title}>Mejores opciones ✨</Text>
-          <Text style={s5.subtitle}>Todos disponibles</Text>
+          <Text style={[s5.title, { color: darkMode ? DARK.text : '#111827' }]}>Mejores opciones ✨</Text>
+          <Text style={[s5.subtitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Todos disponibles</Text>
           {sortedGroups.map(([dayLabel, options]) => (
             <View key={dayLabel}>
               <View style={s5.sectionHeader}>
@@ -1186,28 +1200,28 @@ export default function HomeScreen() {
 
   if (screen === 'confirmado') {
     content = (
-      <View style={[s6.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+      <View style={[s6.wrap, darkMode && { backgroundColor: DARK.bg }]}>
         <StatusBar style={darkMode ? 'light' : 'dark'} />
           <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Confirmado" onBack={() => setScreen('heatmap')} />
         <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent} bounces={false}>
           <View style={s6.successIcon}>
             <Text style={{ fontSize: 34 }}>✅</Text>
           </View>
-          <Text style={s6.title}>¡Plan confirmado!</Text>
-          <Text style={s6.subtitle}>Ya saben cuándo se van a ver</Text>
-          <View style={s6.confirmCard}>
-            <Text style={s6.cardLbl}>Plan</Text>
-            <Text style={s6.cardName}>{planName}</Text>
+          <Text style={[s6.title, { color: darkMode ? DARK.text : '#111827' }]}>¡Plan confirmado!</Text>
+          <Text style={[s6.subtitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Ya saben cuándo se van a ver</Text>
+          <View style={[s6.confirmCard, darkMode && { backgroundColor: DARK.card, borderColor: DARK.border }]}>
+            <Text style={[s6.cardLbl, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Plan</Text>
+            <Text style={[s6.cardName, { color: darkMode ? DARK.text : '#111827' }]}>{planName}</Text>
             <View style={s6.dateRow}>
-              <View style={s6.dateIcon}>
+              <View style={[s6.dateIcon, darkMode && { backgroundColor: DARK.elevated }]}>
                 <Text style={{ fontSize: 18 }}>📅</Text>
               </View>
               <View>
-                <Text style={s6.dateVal}>{confirmedDay || selectedOption?.day || 'Miércoles 15 de enero'}</Text>
-                <Text style={s6.timeVal}>{confirmedTime || selectedOption?.time || '7:00 PM – 9:00 PM · 2 horas'}</Text>
+                <Text style={[s6.dateVal, { color: darkMode ? DARK.text : '#111827' }]}>{confirmedDay || selectedOption?.day || 'Miércoles 15 de enero'}</Text>
+                <Text style={[s6.timeVal, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>{confirmedTime || selectedOption?.time || '7:00 PM – 9:00 PM · 2 horas'}</Text>
               </View>
             </View>
-            <Text style={s6.attendLbl}>Asistentes</Text>
+            <Text style={[s6.attendLbl, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Asistentes</Text>
             <View style={s6.attendRow}>
               {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
                 const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
@@ -1243,7 +1257,7 @@ export default function HomeScreen() {
   }
 
   const navBar = MAIN_SCREENS.has(screen) && (
-    <View style={[navStyle.bar, darkMode && { backgroundColor: '#1a1a2e' }]}>
+    <View style={[navStyle.bar, darkMode && { backgroundColor: DARK.bg, borderTopColor: DARK.border }]}>
       {NAV_STEPS.map((step, i) => {
         const isCurrent = step.key === screen;
         const isDone = navCompleted[i];
@@ -1256,7 +1270,7 @@ export default function HomeScreen() {
             activeOpacity={canGo ? 0.6 : 1}
             onPress={() => { if (canGo) navigateToStep(step.key); }}
           >
-            <View style={[navStyle.dot, isCurrent && navStyle.dotCurrent, isDone && !isCurrent && navStyle.dotDone]}>
+            <View style={[navStyle.dot, darkMode && { backgroundColor: DARK.elevated }, isCurrent && navStyle.dotCurrent, isCurrent && darkMode && { backgroundColor: '#2a2040' }, isDone && !isCurrent && navStyle.dotDone, isDone && !isCurrent && darkMode && { backgroundColor: '#1a3a2a' }]}>
               <Text style={navStyle.dotIcon}>{step.icon}</Text>
               {isDone && (
                 <View style={navStyle.checkBadge}>
@@ -1264,7 +1278,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-            <Text style={[navStyle.label, isCurrent && navStyle.labelCurrent, !canGo && navStyle.labelMuted]}>
+            <Text style={[navStyle.label, isCurrent && navStyle.labelCurrent, isCurrent && darkMode && { color: DARK.text }, !canGo && navStyle.labelMuted, !canGo && darkMode && { color: DARK.textMuted }]}>
               {step.label}
             </Text>
           </TouchableOpacity>
@@ -1286,19 +1300,19 @@ export default function HomeScreen() {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={modalStyle.overlay}>
-          <View style={modalStyle.card}>
-            <Text style={modalStyle.title}>¿Confirmar fecha?</Text>
-            <Text style={modalStyle.subtitle}>¿Quieres seleccionar esta fecha?</Text>
-            <View style={modalStyle.dateContainer}>
-              <Text style={modalStyle.dateDay}>{modalDay}</Text>
-              <Text style={modalStyle.dateTime}>{modalTime}</Text>
+          <View style={[modalStyle.card, darkMode && { backgroundColor: DARK.card }]}>
+            <Text style={[modalStyle.title, { color: darkMode ? DARK.text : '#111827' }]}>¿Confirmar fecha?</Text>
+            <Text style={[modalStyle.subtitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>¿Quieres seleccionar esta fecha?</Text>
+            <View style={[modalStyle.dateContainer, darkMode && { backgroundColor: DARK.elevated, borderColor: DARK.border }]}>
+              <Text style={[modalStyle.dateDay, { color: darkMode ? DARK.text : '#111827' }]}>{modalDay}</Text>
+              <Text style={[modalStyle.dateTime, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>{modalTime}</Text>
             </View>
             <View style={modalStyle.btnRow}>
               <TouchableOpacity
-                style={modalStyle.cancelBtn}
+                style={[modalStyle.cancelBtn, darkMode && { backgroundColor: DARK.elevated }]}
                 onPress={() => setShowModal(false)}
               >
-                <Text style={modalStyle.cancelBtnText}>Cancelar</Text>
+                <Text style={[modalStyle.cancelBtnText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={modalStyle.confirmBtn}
@@ -1323,8 +1337,8 @@ export default function HomeScreen() {
         onRequestClose={() => setEditingColorIdx(null)}
       >
         <View style={modalStyle.overlay}>
-          <View style={modalStyle.card}>
-            <Text style={modalStyle.title}>Elegir color</Text>
+          <View style={[modalStyle.card, darkMode && { backgroundColor: DARK.card }]}>
+            <Text style={[modalStyle.title, { color: darkMode ? DARK.text : '#111827' }]}>Elegir color</Text>
             {(() => {
               const usedColors = new Set<string>();
               participants.forEach((p, i) => {
@@ -1491,9 +1505,9 @@ const s0 = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -2,
+    fontWeight: '600',
+    color: '#cccccc',
+    letterSpacing: 0.5,
     marginBottom: 14,
     textAlign: 'center',
   },
@@ -2382,7 +2396,7 @@ const s6 = StyleSheet.create({
    shareBtnText: {
       color: '#10B981',
       fontSize: 16,
-      fontWeight: '700',
+    fontWeight: '600',
     },
   });
 
