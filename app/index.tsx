@@ -1109,8 +1109,8 @@ export default function HomeScreen() {
         <View style={s4.legend}>
           {[
             { color: '#10B981', label: `${totalP}/${totalP}` },
-            { color: '#D1FAE5', label: `${Math.ceil(totalP * 0.75)}/${totalP}` },
-            { color: '#FEF3C7', label: `${Math.ceil(totalP * 0.5)}/${totalP}` },
+            ...(totalP >= 2 ? [{ color: '#D1FAE5', label: `${totalP - 1}/${totalP}` }] : []),
+            ...(totalP >= 3 ? [{ color: '#FEF3C7', label: `${totalP - 2}/${totalP}` }] : []),
             { color: '#E5E7EB', label: `0/${totalP}` },
           ].map((l) => (
             <View key={l.label} style={s4.legendItem}>
