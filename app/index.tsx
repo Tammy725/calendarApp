@@ -272,7 +272,7 @@ export default function HomeScreen() {
     const grid = Array.from({ length: 24 }, () => Array(cols).fill(0));
     for (let ri = 0; ri < 24; ri++) {
       for (let ci = 0; ci < cols; ci++) {
-        if (userGrid[ri]?.[ci] && !googleBusyGrid[ri]?.[ci]) {
+        if (!userGrid[ri]?.[ci] && !googleBusyGrid[ri]?.[ci]) {
           grid[ri][ci]++;
         }
       }
@@ -910,10 +910,10 @@ export default function HomeScreen() {
     content = (
       <View style={s7.wrap}>
         <StatusBar style="dark" />
-        <TopNav title="Tu disponibilidad" onBack={() => setScreen('conectar')} />
+        <TopNav title="Mis horarios" onBack={() => setScreen('conectar')} />
         <View style={s7.header}>
-          <Text style={s7.title}>Toca las horas que SÍ puedes ✅</Text>
-          <Text style={s7.subtitle}>Marcá cuándo estás libre para el plan</Text>
+          <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
+          <Text style={s7.subtitle}>Marcá cuándo estás ocupada para el plan</Text>
         </View>
         <View style={s7.gridContainer}>
           <View style={s7.paginationRow}>
@@ -964,17 +964,17 @@ export default function HomeScreen() {
                       </View>
                     );
                   }
-                  const available = userGrid[ri]?.[safePage * PAGE_SIZE + ci] ?? false;
+                  const blocked = userGrid[ri]?.[safePage * PAGE_SIZE + ci] ?? false;
                   return (
                     <TouchableOpacity
                       key={ci}
                       style={[s7.heatCell, {
-                        backgroundColor: available ? '#10B981' : '#F9FAFB',
-                        borderColor: available ? '#10B981' : '#E5E7EB',
+                        backgroundColor: blocked ? '#DC2626' : '#F9FAFB',
+                        borderColor: blocked ? '#DC2626' : '#E5E7EB',
                       }]}
                       onPress={() => toggleUserCell(ri, safePage * PAGE_SIZE + ci)}
                     >
-                      {available && <Text style={s7.cellX}>✓</Text>}
+                      {blocked && <Text style={s7.cellX}>✕</Text>}
                     </TouchableOpacity>
                   );
                 })}
@@ -985,12 +985,12 @@ export default function HomeScreen() {
         </View>
         <View style={s7.legend}>
           <View style={s7.legendItem}>
-            <View style={[s7.legendDot, { backgroundColor: '#10B981' }]} />
+            <View style={[s7.legendDot, { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1 }]} />
             <Text style={s7.legendLabel}>Disponible</Text>
           </View>
           <View style={s7.legendItem}>
-            <View style={[s7.legendDot, { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1 }]} />
-            <Text style={s7.legendLabel}>No disponible</Text>
+            <View style={[s7.legendDot, { backgroundColor: '#DC2626' }]} />
+            <Text style={s7.legendLabel}>Ocupado</Text>
           </View>
         </View>
         <View style={s7.bottom}>
@@ -1121,7 +1121,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity style={s4.editBlockBtn} onPress={() => setScreen('blockout')}>
           <Text style={s4.editBlockBtnText}>
-            {userGrid.some(r => r.some(c => c)) ? 'Editar tu disponibilidad ✏️' : 'Marcar tu disponibilidad ✏️'}
+            {userGrid.some(r => r.some(c => c)) ? 'Editar horarios ocupados ✏️' : 'Bloquear horarios ✏️'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
