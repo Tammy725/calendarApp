@@ -69,19 +69,25 @@ const NAV_STEPS = [
 ];
 const MAIN_SCREENS = new Set(['crear', 'invitar', 'conectar', 'heatmap', 'blockout', 'mejores', 'confirmado']);
 
-function TopNav({ title, onBack }: { title: string; onBack: () => void }) {
+function TopNav({ title, onBack, darkMode, onToggleDark }: { title: string; onBack: () => void; darkMode?: boolean; onToggleDark?: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[navStyle.wrap, { paddingTop: insets.top }]}>
+    <View style={[navStyle.wrap, { paddingTop: insets.top, backgroundColor: darkMode ? '#1a1a2e' : '#fff' }]}>
       <TouchableOpacity
         onPress={onBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={navStyle.backBtn}
       >
-        <Text style={navStyle.back}>{'←'}</Text>
+        <Text style={[navStyle.back, { color: darkMode ? '#e0e0e0' : '#111827' }]}>{'←'}</Text>
       </TouchableOpacity>
-      <Text style={navStyle.title}>{title}</Text>
-      <View style={{ width: 38 }} />
+      <Text style={[navStyle.title, { color: darkMode ? '#e0e0e0' : '#111827' }]}>{title}</Text>
+      <TouchableOpacity
+        onPress={onToggleDark}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={navStyle.backBtn}
+      >
+        <Text style={{ fontSize: 20 }}>{darkMode ? '☀️' : '🌙'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -118,6 +124,7 @@ export default function HomeScreen() {
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, Participant[]>>({});
   const [customColors, setCustomColors] = useState<Record<string, { color: string; bg: string }>>({});
   const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
 
   const participants = useMemo(() => participantsByRoom[roomCode] || [], [participantsByRoom, roomCode]);
 
@@ -499,9 +506,9 @@ export default function HomeScreen() {
     };
 
     content = (
-      <View style={s1.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
+      <View style={[s1.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Nuevo plan" onBack={() => { setPlanName(''); setFromDate(null); setToDate(null); setScreen('inicio'); }} />
         <ScrollView style={s1.body} contentContainerStyle={s1.bodyContent} bounces={false}>
           <Text style={[s1.sectionLabel, { marginTop: 0 }]}>Nuevo plan</Text>
           <Text style={s1.heading}>¿Cuál es el plan? 🎉</Text>
@@ -692,9 +699,9 @@ export default function HomeScreen() {
 
   if (screen === 'invitar') {
     content = (
-      <View style={s2.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Invitar" onBack={() => setScreen('crear')} />
+      <View style={[s2.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Invitar" onBack={() => setScreen('crear')} />
         <ScrollView style={s2.body} contentContainerStyle={s2.bodyContent} bounces={false}>
           <Text style={s2.heading}>Integrantes 👥</Text>
           <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
@@ -769,9 +776,9 @@ export default function HomeScreen() {
 
   if (screen === 'conectar') {
     content = (
-      <View style={s3.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Conectar" onBack={() => setScreen('invitar')} />
+      <View style={[s3.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Conectar" onBack={() => setScreen('invitar')} />
         <View style={s3.bodyTop}>
           <View style={s3.calIcon}>
             <Text style={{ fontSize: 44 }}>📅</Text>
@@ -820,10 +827,10 @@ export default function HomeScreen() {
 
   if (screen === 'join') {
     content = (
-      <View style={[s2.wrap, { justifyContent: 'center', paddingBottom: 40 }]}>
-        <StatusBar style="dark" />
+      <View style={[s2.wrap, { justifyContent: 'center', paddingBottom: 40 }, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-          <TopNav title="Unirse" onBack={() => setScreen('inicio')} />
+          <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Unirse" onBack={() => setScreen('inicio')} />
         </View>
         <View style={{ padding: 24, gap: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#11181C' }}>Unirse a un Plan</Text>
@@ -908,9 +915,9 @@ export default function HomeScreen() {
 
   if (screen === 'blockout') {
     content = (
-      <View style={s7.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Mis horarios" onBack={() => setScreen('conectar')} />
+      <View style={[s7.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mis horarios" onBack={() => setScreen('conectar')} />
         <View style={s7.header}>
           <Text style={s7.title}>Toca las horas que NO puedes ⛔</Text>
           <Text style={s7.subtitle}>Marcá cuándo estás ocupada para el plan</Text>
@@ -1006,9 +1013,9 @@ export default function HomeScreen() {
     const modifiedHeatmap = getModifiedHeatmap();
     const totalP = participants.length || 1;
     content = (
-      <View style={s4.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Disponibilidad" onBack={() => setScreen('conectar')} />
+      <View style={[s4.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Disponibilidad" onBack={() => setScreen('conectar')} />
         <View style={s4.header}>
           <View>
             <Text style={s4.heatTitle}>Disponibilidad</Text>
@@ -1145,9 +1152,9 @@ export default function HomeScreen() {
       return (MONTHS.indexOf(pa[2]) * 100 + parseInt(pa[1])) - (MONTHS.indexOf(pb[2]) * 100 + parseInt(pb[1]));
     });
     content = (
-      <View style={s5.wrap}>
-        <StatusBar style="dark" />
-        <TopNav title="Mejores horarios" onBack={() => setScreen('heatmap')} />
+      <View style={[s5.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Mejores horarios" onBack={() => setScreen('heatmap')} />
         <ScrollView style={s5.body} contentContainerStyle={s5.bodyContent} bounces={false}>
           <Text style={s5.title}>Mejores opciones ✨</Text>
           <Text style={s5.subtitle}>Todos disponibles</Text>
@@ -1219,9 +1226,9 @@ export default function HomeScreen() {
 
   if (screen === 'confirmado') {
     content = (
-      <View style={s6.wrap}>
-        <StatusBar style="dark" />
-          <TopNav title="Confirmado" onBack={() => setScreen('heatmap')} />
+      <View style={[s6.wrap, darkMode && { backgroundColor: '#1a1a2e' }]}>
+        <StatusBar style={darkMode ? 'light' : 'dark'} />
+          <TopNav darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)} title="Confirmado" onBack={() => setScreen('heatmap')} />
         <ScrollView style={s6.body} contentContainerStyle={s6.bodyContent} bounces={false}>
           <View style={s6.successIcon}>
             <Text style={{ fontSize: 34 }}>✅</Text>
@@ -1276,7 +1283,7 @@ export default function HomeScreen() {
   }
 
   const navBar = MAIN_SCREENS.has(screen) && (
-    <View style={navStyle.bar}>
+    <View style={[navStyle.bar, darkMode && { backgroundColor: '#1a1a2e' }]}>
       {NAV_STEPS.map((step, i) => {
         const isCurrent = step.key === screen;
         const isDone = navCompleted[i];
