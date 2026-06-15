@@ -26,7 +26,7 @@ const AVATAR_COLORS = [
 ];
 
 const PEOPLE = [
-  { initial: 'T', name: 'Tú', color: '#5B4FDB', bg: '#EEF2FF' },
+  { initial: 'T', name: 'Tú', color: '#8B7CF6', bg: '#EEF2FF' },
   { initial: 'M', name: 'María', color: '#10B981', bg: '#D1FAE5' },
   { initial: 'C', name: 'Carlos', color: '#F59E0B', bg: '#FEF3C7' },
   { initial: 'S', name: 'Sofía', color: '#DB2777', bg: '#FCE7F3' },
@@ -133,7 +133,7 @@ export default function HomeScreen() {
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, Participant[]>>({});
   const [customColors, setCustomColors] = useState<Record<string, { color: string; bg: string }>>({});
   const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   const participants = useMemo(() => participantsByRoom[roomCode] || [], [participantsByRoom, roomCode]);
 
@@ -147,10 +147,10 @@ export default function HomeScreen() {
     const list = participantsByRoomRef.current[code] || [];
     list.forEach((p, i) => {
       const custom = customColorsRef.current[p.name];
-      const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+      const ac = custom || (i === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
       used.add(ac.color);
     });
-    const ALL = [{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS];
+    const ALL = [{ color: '#8B7CF6', bg: '#EEF2FF' }, ...AVATAR_COLORS];
     return ALL.find(c => !used.has(c.color)) || ALL[0];
   }
 
@@ -163,7 +163,7 @@ export default function HomeScreen() {
   }
 
   function initParticipantsForRoom(code: string) {
-    addParticipant(code, { name: 'Tú', initial: 'T', color: '#5B4FDB', bg: '#EEF2FF', status: 'conectado' });
+    addParticipant(code, { name: 'Tú', initial: 'T', color: '#8B7CF6', bg: '#EEF2FF', status: 'conectado' });
   }
 
   const fetchedRef = useRef(false);
@@ -476,7 +476,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         <View style={s0.center}>
-          <View style={[s0.logo, darkMode ? {} : { backgroundColor: 'rgba(91,79,219,0.1)', borderColor: 'rgba(91,79,219,0.25)' }]}>
+          <View style={[s0.logo, darkMode ? {} : { backgroundColor: 'rgba(139,124,246,0.1)', borderColor: 'rgba(139,124,246,0.25)' }]}>
             <Text style={s0.logoText}>📅</Text>
           </View>
           <Text style={[s0.title, { color: darkMode ? '#cccccc' : '#111827' }]}>Calendario compartido</Text>
@@ -485,11 +485,11 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={s0.buttons}>
-          <TouchableOpacity style={[s0.primaryBtn, { backgroundColor: '#5B4FDB' }]} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
-            <Text style={[s0.primaryBtnText, { color: darkMode ? '#cccccc' : '#fff' }]}>Crear un plan ✨</Text>
+          <TouchableOpacity style={[s0.primaryBtn, { backgroundColor: '#8B7CF6' }]} onPress={() => { setPlanName(''); setFromDate(null); setToDate(null); setPeriodIdx(-1); setCustomStartHour(7); setCustomEndHour(11); setCompletedSteps([]); setRoomCode(''); setConfirmedDay(''); setConfirmedTime(''); calendarConnected.current = false; setScreen('crear'); }}>
+            <Text style={[s0.primaryBtnText, { color: '#fff' }]}>Crear un plan ✨</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s0.ghostBtn, darkMode ? { backgroundColor: 'rgba(255,255,255,0.05)' } : { backgroundColor: 'rgba(91,79,219,0.05)', borderColor: 'rgba(91,79,219,0.15)' }]} onPress={() => setScreen('join')}>
-            <Text style={[s0.ghostBtnText, { color: darkMode ? '#cccccc' : '#4A3DBF' }]}>Tengo un código de invitación</Text>
+          <TouchableOpacity style={[s0.ghostBtn, darkMode ? { backgroundColor: 'rgba(255,255,255,0.05)' } : { backgroundColor: 'rgba(139,124,246,0.05)', borderColor: 'rgba(139,124,246,0.15)' }]} onPress={() => setScreen('join')}>
+            <Text style={[s0.ghostBtnText, { color: darkMode ? '#cccccc' : '#8B7CF6' }]}>Tengo un código de invitación</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -677,7 +677,7 @@ export default function HomeScreen() {
               setShowDatePicker(null);
             }}
           >
-            <Text style={[s1.pickerDoneText, darkMode && { color: '#cccccc' }]}>Listo</Text>
+            <Text style={s1.pickerDoneText}>Listo</Text>
           </TouchableOpacity>
         )}
         <View style={s1.bottom}>
@@ -719,7 +719,7 @@ export default function HomeScreen() {
           <Text style={[s2.heading, { color: darkMode ? DARK.text : '#111827' }]}>Integrantes 👥</Text>
           <Text style={{ fontSize: 14, color: darkMode ? DARK.textSecondary : '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
           <View style={[s2.linkCard, darkMode && { backgroundColor: DARK.card, borderColor: DARK.border }]}>
-            <Text style={[s2.linkCardLabel, { color: darkMode ? DARK.text : '#5B4FDB' }]}>Código y enlace de invitación</Text>
+            <Text style={[s2.linkCardLabel, { color: darkMode ? DARK.text : '#8B7CF6' }]}>Código y enlace de invitación</Text>
             <View style={s2.linkRow}>
               <Text style={[s2.linkText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]} numberOfLines={1}>{roomCode}</Text>
             </View>
@@ -732,7 +732,7 @@ export default function HomeScreen() {
                   Alert.alert('Copiado', 'Código copiado');
                 }}
               >
-                <Text style={[s2.copyBtnText, darkMode && { color: '#cccccc' }]}>Copiar</Text>
+                <Text style={s2.copyBtnText}>Copiar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -764,7 +764,7 @@ export default function HomeScreen() {
           <Text style={[s2.peopleTitle, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Personas unidas · {participants.length}/{groupSize}</Text>
           {participants.map((p, i) => {
             const custom = customColors[p.name];
-            const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+            const ac = custom || (i === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
             return (
               <View key={p.name} style={[s2.personRow, darkMode && { borderBottomColor: DARK.border }]}>
                 <TouchableOpacity onPress={() => setEditingColorIdx(i)} style={[s2.avatar, { backgroundColor: ac.bg }]}>
@@ -789,9 +789,9 @@ export default function HomeScreen() {
               setScreen('heatmap');
             }
           }}>
-            <Text style={[s2.nextBtnText, darkMode && { color: '#cccccc' }]}>📆 Conectar calendario</Text>
+            <Text style={s2.nextBtnText}>📆 Conectar calendario</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s3.manualBtn, { marginTop: 6 }, darkMode && { backgroundColor: DARK.card }]} onPress={() => setScreen('blockout')}>
+          <TouchableOpacity style={[s3.manualBtn, { marginTop: 6 }, darkMode && { backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => setScreen('blockout')}>
             <Text style={[s3.manualBtnText, darkMode && { color: DARK.text }]}>Poner mis horarios manualmente</Text>
           </TouchableOpacity>
         </View>
@@ -838,7 +838,7 @@ export default function HomeScreen() {
             autoCorrect={false}
           />
           <TouchableOpacity
-            style={{ width: '100%', backgroundColor: '#5B4FDB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 }}
+            style={{ width: '100%', backgroundColor: '#8B7CF6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 }}
             disabled={joining}
             onPress={async () => {
               if (!joinName.trim()) {
@@ -882,7 +882,7 @@ export default function HomeScreen() {
               }
             }}
           >
-            <Text style={{ color: darkMode ? '#cccccc' : '#fff', fontSize: 17, fontWeight: '600' }}>
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
               {joining ? 'Buscando...' : 'Unirse'}
             </Text>
           </TouchableOpacity>
@@ -980,7 +980,7 @@ export default function HomeScreen() {
         </View>
         <View style={s7.bottom}>
           <TouchableOpacity style={s7.saveBtn} onPress={() => { calendarConnected.current = true; setCompletedSteps(prev => [...prev, 'invitar']); setScreen('heatmap'); }}>
-            <Text style={[s7.saveBtnText, darkMode && { color: '#cccccc' }]}>Siguiente →</Text>
+            <Text style={s7.saveBtnText}>Siguiente →</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1001,7 +1001,7 @@ export default function HomeScreen() {
           </View>
           <View style={s4.avatarsRow}>
             {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
-              const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+              const ac = i === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
               return (
                 <View key={p.name} style={[s4.avaSm, {
                   backgroundColor: ac.bg,
@@ -1110,7 +1110,7 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={s4.actionBtn} onPress={() => setScreen('mejores')}>
-          <Text style={[s4.actionBtnText, darkMode && { color: '#cccccc' }]}>Horarios recomendados ✨</Text>
+          <Text style={s4.actionBtnText}>Horarios recomendados ✨</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1166,7 +1166,7 @@ export default function HomeScreen() {
                     <View style={s5.cardBottom}>
                       <View style={s5.avatarsRow}>
                         {(participants.length ? participants : PEOPLE.slice(0, o.count)).map((p, j) => {
-                          const pc = j === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(j - 1) % AVATAR_COLORS.length];
+                          const pc = j === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(j - 1) % AVATAR_COLORS.length];
                           return (
                             <View key={p.name} style={[s5.avaSm, {
                               backgroundColor: pc.bg,
@@ -1186,7 +1186,7 @@ export default function HomeScreen() {
                             setShowModal(true);
                           }}
                         >
-                          <Text style={[s5.chooseBtnText, darkMode && { color: '#cccccc' }]}>Elegir este ✓</Text>
+                          <Text style={s5.chooseBtnText}>Elegir este ✓</Text>
                         </TouchableOpacity>
                       ) : (
                         <Text style={[s5.canText, { color: o.color }]}>{o.count}/{totalP} disponibles</Text>
@@ -1228,7 +1228,7 @@ export default function HomeScreen() {
             <Text style={[s6.attendLbl, { color: darkMode ? DARK.textSecondary : '#6B7280' }]}>Asistentes</Text>
             <View style={s6.attendRow}>
               {(participants.length ? participants : PEOPLE.slice(0, 4)).map((p, i) => {
-                const ac = i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
+                const ac = i === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length];
                 return (
                   <View key={p.name} style={s6.attendPerson}>
                     <View style={[s6.attendAva, { backgroundColor: ac.bg }]}>
@@ -1245,7 +1245,7 @@ export default function HomeScreen() {
         </ScrollView>
         <View style={s6.bottom}>
           <TouchableOpacity style={s6.gcalBtn} onPress={handleAddToGoogleCalendar}>
-            <Text style={[s6.gcalBtnText, darkMode && { color: '#cccccc' }]}>Agregar a Google Calendar 📅</Text>
+            <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s6.shareBtn} onPress={async () => {
             const dia = confirmedDay || 'Por confirmar';
@@ -1274,7 +1274,7 @@ export default function HomeScreen() {
             activeOpacity={canGo ? 0.6 : 1}
             onPress={() => { if (canGo) navigateToStep(step.key); }}
           >
-            <View style={[navStyle.dot, darkMode && { backgroundColor: DARK.elevated }, isCurrent && navStyle.dotCurrent, isCurrent && darkMode && { backgroundColor: '#5B4FDB' }, isDone && !isCurrent && navStyle.dotDone, isDone && !isCurrent && darkMode && { backgroundColor: '#3D5A4E' }]}>
+            <View style={[navStyle.dot, darkMode && { backgroundColor: DARK.elevated }, isCurrent && navStyle.dotCurrent, isCurrent && darkMode && { backgroundColor: '#8B7CF6' }, isDone && !isCurrent && navStyle.dotDone, isDone && !isCurrent && darkMode && { backgroundColor: '#3D5A4E' }]}>
               <Text style={navStyle.dotIcon}>{step.icon}</Text>
               {isDone && (
                 <View style={navStyle.checkBadge}>
@@ -1328,7 +1328,7 @@ export default function HomeScreen() {
                   setScreen('confirmado');
                 }}
               >
-                <Text style={[modalStyle.confirmBtnText, darkMode && { color: '#cccccc' }]}>Confirmar</Text>
+                <Text style={modalStyle.confirmBtnText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1348,10 +1348,10 @@ export default function HomeScreen() {
               participants.forEach((p, i) => {
                 if (i === editingColorIdx) return;
                 const custom = customColors[p.name];
-                const ac = custom || (i === 0 ? { color: '#5B4FDB', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+                const ac = custom || (i === 0 ? { color: '#8B7CF6', bg: '#EEF2FF' } : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
                 usedColors.add(ac.color);
               });
-              const ALL_COLORS = [{ color: '#5B4FDB', bg: '#EEF2FF' }, ...AVATAR_COLORS];
+              const ALL_COLORS = [{ color: '#8B7CF6', bg: '#EEF2FF' }, ...AVATAR_COLORS];
               return (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginVertical: 20 }}>
                   {ALL_COLORS.filter(c => !usedColors.has(c.color)).map((c, i) => (
@@ -1405,7 +1405,7 @@ const navStyle = StyleSheet.create({
   },
   back: {
     fontSize: 22,
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     fontWeight: '600',
   },
   title: {
@@ -1474,7 +1474,7 @@ const navStyle = StyleSheet.create({
     textAlign: 'center',
   },
   labelCurrent: {
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     fontWeight: '700',
   },
   labelMuted: {
@@ -1533,7 +1533,7 @@ const s0 = StyleSheet.create({
     alignItems: 'center',
   },
   primaryBtnText: {
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -1633,7 +1633,7 @@ const s1 = StyleSheet.create({
     alignItems: 'center',
   },
   durOptSel: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
   },
   durOptText: {
     fontSize: 14,
@@ -1649,7 +1649,7 @@ const s1 = StyleSheet.create({
     paddingBottom: 12,
   },
   nextBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
@@ -1660,7 +1660,7 @@ const s1 = StyleSheet.create({
     fontWeight: '700',
   },
   pickerDone: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     paddingVertical: 12,
     alignItems: 'center',
     marginHorizontal: 20,
@@ -1739,7 +1739,7 @@ const s2 = StyleSheet.create({
   linkCard: {
     backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: 'rgba(91,79,219,0.15)',
+    borderColor: 'rgba(139,124,246,0.15)',
     borderRadius: 18,
     padding: 16,
     paddingHorizontal: 18,
@@ -1747,7 +1747,7 @@ const s2 = StyleSheet.create({
   },
   linkCardLabel: {
     fontSize: 13,
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -1764,7 +1764,7 @@ const s2 = StyleSheet.create({
     flex: 1,
   },
   copyBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -1838,7 +1838,7 @@ const s2 = StyleSheet.create({
     paddingBottom: 12,
   },
   nextBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
@@ -1937,19 +1937,12 @@ const s3 = StyleSheet.create({
     color: '#111827',
   },
   manualBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(139,124,246,0.06)',
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E8E8ED',
-    shadowColor: '#5B4FDB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
   },
   manualBtnText: {
     fontSize: 16,
@@ -2075,7 +2068,7 @@ const s4 = StyleSheet.create({
   },
   pageArrow: {
     fontSize: 18,
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
@@ -2108,7 +2101,7 @@ const s4 = StyleSheet.create({
     fontWeight: '500',
   },
   actionBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
@@ -2380,7 +2373,7 @@ const s6 = StyleSheet.create({
     gap: 12,
   },
   gcalBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
@@ -2399,7 +2392,7 @@ const s6 = StyleSheet.create({
     width: '100%',
   },
    shareBtnText: {
-      color: '#10B981',
+      color: '#059669',
       fontSize: 16,
     fontWeight: '600',
     },
@@ -2501,7 +2494,7 @@ const s7 = StyleSheet.create({
   },
   pageArrow: {
     fontSize: 18,
-    color: '#5B4FDB',
+    color: '#8B7CF6',
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
@@ -2539,7 +2532,7 @@ const s7 = StyleSheet.create({
     marginTop: 'auto',
   },
   saveBtn: {
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
@@ -2618,7 +2611,7 @@ const modalStyle = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#5B4FDB',
+    backgroundColor: '#8B7CF6',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
