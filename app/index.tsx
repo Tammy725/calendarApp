@@ -719,12 +719,9 @@ export default function HomeScreen() {
           <Text style={[s2.heading, { color: darkMode ? DARK.text : '#111827' }]}>Integrantes 👥</Text>
           <Text style={{ fontSize: 14, color: darkMode ? DARK.textSecondary : '#6B7280', marginBottom: 16 }}>Comparte este código para que se unan al plan</Text>
           <View style={[s2.linkCard, darkMode && { backgroundColor: DARK.card, borderColor: DARK.border }]}>
-            <Text style={[s2.linkCardLabel, { color: darkMode ? DARK.text : '#5B4FDB' }]}>Código y enlace de invitación</Text>
+            <Text style={[s2.linkCardLabel, { color: darkMode ? DARK.text : '#5B4FDB' }]}>Código de invitación</Text>
             <View style={s2.linkRow}>
               <Text style={[s2.linkText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]} numberOfLines={1}>{roomCode}</Text>
-            </View>
-            <View style={s2.linkRow}>
-                <Text style={[s2.linkText, { color: darkMode ? DARK.textSecondary : '#6B7280' }]} numberOfLines={1}>http://miapp.com/unirse/{roomCode}</Text>
               <TouchableOpacity
                 style={[s2.copyBtn, darkMode && { backgroundColor: '#8B7CF6' }]}
                 onPress={async () => {
@@ -1751,7 +1748,7 @@ const s2 = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   linkRow: {
     flexDirection: 'row',
@@ -1759,9 +1756,11 @@ const s2 = StyleSheet.create({
     gap: 10,
   },
   linkText: {
-    fontSize: 15,
+    fontSize: 24,
     color: '#6B7280',
     flex: 1,
+    letterSpacing: 2,
+    fontWeight: '600',
   },
   copyBtn: {
     backgroundColor: '#5B4FDB',
