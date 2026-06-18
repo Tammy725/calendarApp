@@ -1336,6 +1336,8 @@ export default function HomeScreen() {
                 durationMinutes: [30, 60, 90, 120][durationIdx] ?? 60,
                 earliestTime: customStartHour ?? TIME_PERIODS[periodIdx]?.startHour ?? 8,
                 latestTime: customEndHour ?? TIME_PERIODS[periodIdx]?.endHour ?? 20,
+              }).then(() => {
+                roomsApi.join(code, "Tú").catch(() => {});
               }).catch(() => {});
               setScreen("invitar");
               setCompletedSteps((prev) => [...prev, "crear"]);
@@ -1699,28 +1701,55 @@ export default function HomeScreen() {
                 );
                 setGroupSize(match.groupSize);
               } else {
-                setPlanName(`Plan ${code}`);
-                setFromDate(new Date());
-                setToDate(new Date(Date.now() + 86400000));
-                setDurationIdx(0);
-                setPeriodIdx(3);
-                setCustomStartHour(8);
-                setCustomEndHour(20);
-                setGroupSize(2);
-                setCreatedPlans((prev) => [
-                  ...prev,
-                  {
-                    code,
-                    name: `Plan ${code}`,
-                    fromDate: new Date(),
-                    toDate: new Date(Date.now() + 86400000),
-                    durationIdx: 0,
-                    periodIdx: 3,
-                    customStartHour: 8,
-                    customEndHour: 20,
-                    groupSize: 2,
-                  },
-                ]);
+                const serverRoom = await roomsApi.get(code).catch(() => null);
+                if (serverRoom) {
+                  setPlanName(serverRoom.name);
+                  setFromDate(serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date());
+                  setToDate(serverRoom.dateEnd ? new Date(serverRoom.dateEnd) : new Date(Date.now() + 86400000));
+                  const durIdx = [30, 60, 90, 120].indexOf(serverRoom.durationMinutes);
+                  setDurationIdx(durIdx >= 0 ? durIdx : 0);
+                  setPeriodIdx(3);
+                  setCustomStartHour(serverRoom.earliestTime ?? 8);
+                  setCustomEndHour(serverRoom.latestTime ?? 20);
+                  setGroupSize(serverRoom.participants?.length ?? 2);
+                  setCreatedPlans((prev) => [
+                    ...prev,
+                    {
+                      code,
+                      name: serverRoom.name,
+                      fromDate: serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date(),
+                      toDate: serverRoom.dateEnd ? new Date(serverRoom.dateEnd) : new Date(Date.now() + 86400000),
+                      durationIdx: durIdx >= 0 ? durIdx : 0,
+                      periodIdx: 3,
+                      customStartHour: serverRoom.earliestTime ?? 8,
+                      customEndHour: serverRoom.latestTime ?? 20,
+                      groupSize: serverRoom.participants?.length ?? 2,
+                    },
+                  ]);
+                } else {
+                  setPlanName(`Plan ${code}`);
+                  setFromDate(new Date());
+                  setToDate(new Date(Date.now() + 86400000));
+                  setDurationIdx(0);
+                  setPeriodIdx(3);
+                  setCustomStartHour(8);
+                  setCustomEndHour(20);
+                  setGroupSize(2);
+                  setCreatedPlans((prev) => [
+                    ...prev,
+                    {
+                      code,
+                      name: `Plan ${code}`,
+                      fromDate: new Date(),
+                      toDate: new Date(Date.now() + 86400000),
+                      durationIdx: 0,
+                      periodIdx: 3,
+                      customStartHour: 8,
+                      customEndHour: 20,
+                      groupSize: 2,
+                    },
+                  ]);
+                }
               }
               setRoomCode(code);
               joinRoom(code);
