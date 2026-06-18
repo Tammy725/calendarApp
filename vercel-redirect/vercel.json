@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/plan/:code", "destination": "/index.html" }]
+}

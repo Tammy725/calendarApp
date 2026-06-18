@@ -79,6 +79,7 @@ export interface Suggestion {
 }
 
 export interface CreateRoomInput {
+  code?: string;
   name: string;
   description?: string;
   durationMinutes?: number;

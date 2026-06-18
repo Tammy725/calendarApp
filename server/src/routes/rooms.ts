@@ -5,28 +5,34 @@ import { AuthRequest } from '../middleware/auth';
 export const roomsRouter = Router();
 
 roomsRouter.post('/', async (req: AuthRequest, res) => {
-  const { name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, timezone } = req.body;
+  const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, timezone } = req.body;
+
+  const data: any = {
+    ...(code && { id: code }),
+    name,
+    description,
+    durationMinutes: durationMinutes ?? 60,
+    bufferMinutes: bufferMinutes ?? 15,
+    earliestTime: earliestTime ?? 8,
+    latestTime: latestTime ?? 20,
+    dateStart: dateStart ? new Date(dateStart) : null,
+    dateEnd: dateEnd ? new Date(dateEnd) : null,
+    timezone: timezone ?? 'UTC',
+    ...(req.userId && { createdById: req.userId }),
+  };
+
+  if (req.userId) {
+    data.participants = {
+      create: {
+        userId: req.userId,
+        role: 'owner',
+        status: 'ACCEPTED',
+      },
+    };
+  }
 
   const room = await prisma.schedulingRoom.create({
-    data: {
-      name,
-      description,
-      durationMinutes: durationMinutes ?? 60,
-      bufferMinutes: bufferMinutes ?? 15,
-      earliestTime: earliestTime ?? 8,
-      latestTime: latestTime ?? 20,
-      dateStart: dateStart ? new Date(dateStart) : null,
-      dateEnd: dateEnd ? new Date(dateEnd) : null,
-      timezone: timezone ?? 'UTC',
-      createdById: req.userId!,
-      participants: {
-        create: {
-          userId: req.userId!,
-          role: 'owner',
-          status: 'ACCEPTED',
-        },
-      },
-    },
+    data,
     include: { participants: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
   });
 
@@ -34,9 +40,10 @@ roomsRouter.post('/', async (req: AuthRequest, res) => {
 });
 
 roomsRouter.get('/', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.json([]);
   const rooms = await prisma.schedulingRoom.findMany({
     where: {
-      participants: { some: { userId: req.userId! } },
+      participants: { some: { userId: req.userId } },
     },
     include: {
       createdBy: { select: { id: true, name: true, email: true } },
@@ -66,16 +73,14 @@ roomsRouter.get('/:id', async (req: AuthRequest, res) => {
 
   if (!room) return res.status(404).json({ error: 'Room not found' });
 
-  const isMember = room.participants.some((p: { userId: string }) => p.userId === req.userId!);
-  if (!isMember) return res.status(403).json({ error: 'Not a member' });
-
   res.json(room);
 });
 
 roomsRouter.patch('/:id', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
   const room = await prisma.schedulingRoom.findFirst({
-    where: { id: roomId, createdById: req.userId! },
+    where: { id: roomId, createdById: req.userId },
   });
   if (!room) return res.status(404).json({ error: 'Room not found or not owner' });
 
@@ -99,9 +104,10 @@ roomsRouter.patch('/:id', async (req: AuthRequest, res) => {
 });
 
 roomsRouter.delete('/:id', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
   const room = await prisma.schedulingRoom.findFirst({
-    where: { id: roomId, createdById: req.userId! },
+    where: { id: roomId, createdById: req.userId },
   });
   if (!room) return res.status(404).json({ error: 'Room not found or not owner' });
 
@@ -110,10 +116,11 @@ roomsRouter.delete('/:id', async (req: AuthRequest, res) => {
 });
 
 roomsRouter.post('/:id/invite', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
   const { email } = req.body;
   const room = await prisma.schedulingRoom.findFirst({
-    where: { id: roomId, createdById: req.userId! },
+    where: { id: roomId, createdById: req.userId },
   });
   if (!room) return res.status(404).json({ error: 'Room not found or not owner' });
 
@@ -134,12 +141,13 @@ roomsRouter.post('/:id/invite', async (req: AuthRequest, res) => {
 });
 
 roomsRouter.post('/:id/join', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
   const room = await prisma.schedulingRoom.findUnique({ where: { id: roomId } });
   if (!room) return res.status(404).json({ error: 'Room not found' });
 
   const existing = await prisma.roomParticipant.findUnique({
-    where: { roomId_userId: { roomId, userId: req.userId! } },
+    where: { roomId_userId: { roomId, userId: req.userId } },
   });
 
   if (existing) {
@@ -153,16 +161,17 @@ roomsRouter.post('/:id/join', async (req: AuthRequest, res) => {
   }
 
   const participant = await prisma.roomParticipant.create({
-    data: { roomId, userId: req.userId!, status: 'ACCEPTED' },
+    data: { roomId, userId: req.userId, status: 'ACCEPTED' },
   });
 
   res.status(201).json(participant);
 });
 
 roomsRouter.delete('/:id/leave', async (req: AuthRequest, res) => {
+  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
   const participant = await prisma.roomParticipant.findUnique({
-    where: { roomId_userId: { roomId, userId: req.userId! } },
+    where: { roomId_userId: { roomId, userId: req.userId } },
   });
   if (!participant) return res.status(404).json({ error: 'Not a member' });
 

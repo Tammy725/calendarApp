@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>MiApp - Plan</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #121212;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+      }
+      .container {
+        max-width: 400px;
+        width: 100%;
+      }
+      .emoji {
+        font-size: 64px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+      p {
+        color: #b3b3b3;
+        margin-bottom: 24px;
+        line-height: 1.5;
+      }
+      .code-box {
+        background: #252525;
+        border: 2px solid #333;
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 36px;
+        letter-spacing: 10px;
+        font-weight: 700;
+        margin: 24px auto;
+        font-family: monospace;
+      }
+      .btn {
+        background: #5b4fdb;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 16px 32px;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn:active {
+        opacity: 0.8;
+      }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        margin-top: 12px;
+      }
+      .btn-success {
+        background: #10b981;
+      }
+      .steps {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 24px;
+        text-align: left;
+      }
+      .steps h3 {
+        font-size: 14px;
+        color: #b3b3b3;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .steps ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .steps li {
+        color: #b3b3b3;
+        font-size: 15px;
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+      .hidden {
+        display: none;
+      }
+      #loading {
+        margin-top: 16px;
+        font-size: 14px;
+        color: #73777c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="emoji">📅</div>
+      <h1 id="title">Abriendo MiApp...</h1>
+      <p id="subtitle">Esperá un momento mientras abrimos la app</p>
+
+      <div id="loading">Intentando abrir la app...</div>
+
+      <div id="fallback" class="hidden">
+        <p style="margin-bottom: 8px">Elegí cómo querés abrirlo:</p>
+        <button class="btn" id="openBtn">Abrir en MiApp</button>
+        <button class="btn btn-success" id="webBtn" style="margin-top: 12px">
+          Abrir en versión web 🌐
+        </button>
+        <button class="btn btn-secondary" id="copyBtn">Copiar código</button>
+        <div class="code-box" id="codeDisplay">---</div>
+        <div class="steps">
+          <h3>¿Sigue sin funcionar?</h3>
+          <ol>
+            <li>Tocá "Abrir en versión web" para usar MiApp desde Safari</li>
+            <li>
+              Desde Safari, tocar Compartir → Agregar a pantalla de inicio
+            </li>
+            <li>Copiá el código, abrí MiApp y pegalo</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var PWA_URL = "https://dist-psi-three-65.vercel.app";
+      var planCode = window.location.pathname.replace("/plan/", "");
+
+      function openApp() {
+        var url = "miapp://plan/" + planCode;
+
+        // Método 1: Usar window.location (funciona mejor en iOS)
+        window.location.href = url;
+
+        // Método 2: iframe como backup
+        try {
+          var iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.src = url;
+          document.body.appendChild(iframe);
+        } catch (e) {}
+      }
+
+      function openWebVersion() {
+        window.location.href = PWA_URL + "/plan/" + planCode;
+      }
+
+      // Mostrar fallback después de 1.2 segundos
+      setTimeout(function () {
+        document.getElementById("title").textContent = "¿No se abrió?";
+        document.getElementById("subtitle").textContent =
+          "Tocá el botón para abrir MiApp";
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("fallback").classList.remove("hidden");
+        document.getElementById("codeDisplay").textContent = planCode;
+      }, 1200);
+
+      // Intentar abrir automáticamente al cargar
+      openApp();
+
+      // Redirigir a la PWA web automáticamente después de 4 segundos si no se abrió la app
+      setTimeout(function () {
+        openWebVersion();
+      }, 4000);
+
+      // Botón para reintentar app nativa
+      document
+        .getElementById("openBtn")
+        .addEventListener("click", function (e) {
+          openApp();
+        });
+
+      // Nuevo botón: abrir versión web
+      document.getElementById("webBtn").addEventListener("click", function (e) {
+        openWebVersion();
+      });
+
+      // Botón copiar
+      document.getElementById("copyBtn").addEventListener("click", function () {
+        navigator.clipboard.writeText(planCode).then(function () {
+          var btn = document.getElementById("copyBtn");
+          btn.textContent = "✅ Código copiado!";
+          btn.classList.add("btn-success");
+          setTimeout(function () {
+            btn.textContent = "Copiar código";
+            btn.classList.remove("btn-success");
+          }, 2000);
+        });
+      });
+    </script>
+  </body>
+</html>

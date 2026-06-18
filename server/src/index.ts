@@ -25,7 +25,7 @@ app.use(express.json());
 
 app.use('/auth', authRouter);
 app.use('/calendar', authMiddleware, calendarRouter);
-app.use('/rooms', authMiddleware, roomsRouter);
+app.use('/rooms', roomsRouter);
 app.use('/availability', authMiddleware, availabilityRouter);
 app.use('/user', authMiddleware, userRouter);
 

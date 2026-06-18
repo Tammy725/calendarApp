@@ -94,7 +94,7 @@ model SchedulingRoom {
   id              String     @id @default(uuid())
   name            String
   description     String?
-  createdById     String
+  createdById     String?
   durationMinutes Int        @default(60)
   bufferMinutes   Int        @default(15)
   earliestTime    Int?       @default(8)
@@ -106,7 +106,7 @@ model SchedulingRoom {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  createdBy         User               @relation(fields: [createdById], references: [id])
+  createdBy         User?              @relation(fields: [createdById], references: [id])
   participants      RoomParticipant[]
   suggestions       Suggestion[]
   availabilitySlots AvailabilitySlot[]
