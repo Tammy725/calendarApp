@@ -70,6 +70,8 @@ async function computeAvailability(roomId) {
             const slotEnd = new Date(slotStart.getTime() + meetingDuration * 60 * 1000);
             const availableUserIds = [];
             for (const participant of participants) {
+                if (!participant.user)
+                    continue;
                 const user = participant.user;
                 const prefStartHour = user.preferredStartHour ?? 9;
                 const prefEndHour = user.preferredEndHour ?? 17;

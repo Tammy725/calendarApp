@@ -94,6 +94,7 @@ export async function computeAvailability(roomId: string): Promise<AvailabilityR
       const availableUserIds: string[] = [];
 
       for (const participant of participants) {
+        if (!participant.user) continue;
         const user = participant.user;
         const prefStartHour = user.preferredStartHour ?? 9;
         const prefEndHour = user.preferredEndHour ?? 17;

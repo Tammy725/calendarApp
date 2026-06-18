@@ -60,10 +60,11 @@ export interface SchedulingRoom {
 export interface RoomParticipant {
   id: string;
   roomId: string;
-  userId: string;
+  userId?: string;
+  guestName?: string;
   role: 'owner' | 'member';
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
-  user: Pick<User, 'id' | 'name' | 'email' | 'avatar' | 'timezone'>;
+  user?: Pick<User, 'id' | 'name' | 'email' | 'avatar' | 'timezone'> | null;
 }
 
 export interface Suggestion {

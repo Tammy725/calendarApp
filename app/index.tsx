@@ -386,6 +386,47 @@ export default function HomeScreen() {
   }, [roomCode]);
 
   useEffect(() => {
+    if (screen !== "invitar" || !roomCode) return;
+    let cancelled = false;
+    const fetchParticipants = async () => {
+      try {
+        const room = await roomsApi.get(roomCode);
+        if (cancelled) return;
+        const serverNames = new Set(
+          room.participants.map((p: any) =>
+            p.guestName || p.user?.name || p.user?.email?.split("@")[0] || "",
+          ).filter(Boolean),
+        );
+        setParticipantsByRoom((prev) => {
+          const existing = prev[roomCode] || [];
+          const existingNames = new Set(existing.map((p) => p.name));
+          const missing = [...serverNames].filter(
+            (n) => !existingNames.has(n),
+          );
+          if (!missing.length) return prev;
+          const newOnes = missing.map((name) => {
+            const ac = getUnusedColor(roomCode);
+            return {
+              name,
+              initial: name[0].toUpperCase(),
+              color: ac.color,
+              bg: ac.bg,
+              status: "conectado" as const,
+            };
+          });
+          return { ...prev, [roomCode]: [...existing, ...newOnes] };
+        });
+      } catch {}
+    };
+    fetchParticipants();
+    const interval = setInterval(fetchParticipants, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [screen, roomCode]);
+
+  useEffect(() => {
     if (screen !== "crear" || periodIdx < 0) return;
     desdeCenterRef.current = customStartHour;
     hastaCenterRef.current = customEndHour;
@@ -1683,6 +1724,7 @@ export default function HomeScreen() {
               }
               setRoomCode(code);
               joinRoom(code);
+              roomsApi.join(code, name).catch(() => {});
               const ac = getUnusedColor(code);
               addParticipant(code, {
                 name,

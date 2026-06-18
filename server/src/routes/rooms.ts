@@ -141,27 +141,37 @@ roomsRouter.post('/:id/invite', async (req: AuthRequest, res) => {
 });
 
 roomsRouter.post('/:id/join', async (req: AuthRequest, res) => {
-  if (!req.userId) return res.status(401).json({ error: 'Authentication required' });
   const roomId = req.params.id as string;
+  const { name } = req.body;
   const room = await prisma.schedulingRoom.findUnique({ where: { id: roomId } });
   if (!room) return res.status(404).json({ error: 'Room not found' });
 
-  const existing = await prisma.roomParticipant.findUnique({
-    where: { roomId_userId: { roomId, userId: req.userId } },
-  });
+  if (req.userId) {
+    const existing = await prisma.roomParticipant.findUnique({
+      where: { roomId_userId: { roomId, userId: req.userId } },
+    });
 
-  if (existing) {
-    if (existing.status === 'PENDING') {
-      await prisma.roomParticipant.update({
-        where: { id: existing.id },
-        data: { status: 'ACCEPTED' },
-      });
+    if (existing) {
+      if (existing.status === 'PENDING') {
+        await prisma.roomParticipant.update({
+          where: { id: existing.id },
+          data: { status: 'ACCEPTED' },
+        });
+      }
+      return res.json(existing);
     }
-    return res.json(existing);
+
+    const participant = await prisma.roomParticipant.create({
+      data: { roomId, userId: req.userId, status: 'ACCEPTED' },
+    });
+
+    return res.status(201).json(participant);
   }
 
+  if (!name) return res.status(400).json({ error: 'Name is required for anonymous join' });
+
   const participant = await prisma.roomParticipant.create({
-    data: { roomId, userId: req.userId, status: 'ACCEPTED' },
+    data: { roomId, guestName: name, status: 'ACCEPTED' },
   });
 
   res.status(201).json(participant);

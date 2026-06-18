@@ -103,6 +103,7 @@ availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
     const results = [];
 
     for (const participant of room.participants) {
+      if (!participant.user) continue;
       const user = participant.user;
       let hasConflict = false;
 

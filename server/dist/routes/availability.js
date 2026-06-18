@@ -92,6 +92,8 @@ exports.availabilityRouter.post('/check/:roomId', async (req, res) => {
         checkTo.setHours(endHour, 0, 0, 0);
         const results = [];
         for (const participant of room.participants) {
+            if (!participant.user)
+                continue;
             const user = participant.user;
             let hasConflict = false;
             for (const account of user.calendarAccounts) {

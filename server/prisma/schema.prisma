@@ -117,7 +117,8 @@ model SchedulingRoom {
 model RoomParticipant {
   id                   String            @id @default(uuid())
   roomId               String
-  userId               String
+  userId               String?
+  guestName            String?
   role                 String            @default("member")
   status               ParticipantStatus @default(PENDING)
   availabilityOverride Json?
@@ -125,7 +126,7 @@ model RoomParticipant {
   updatedAt            DateTime          @updatedAt
 
   room SchedulingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user User           @relation(fields: [userId], references: [id])
+  user User?          @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId])
   @@map("room_participants")

@@ -17,8 +17,8 @@ export const roomsApi = {
   invite: (id: string, email: string) =>
     api.post<RoomParticipant>(`/rooms/${id}/invite`, { email }),
 
-  join: (id: string) =>
-    api.post<RoomParticipant>(`/rooms/${id}/join`),
+  join: (id: string, name?: string) =>
+    api.post<RoomParticipant>(`/rooms/${id}/join`, name ? { name } : undefined),
 
   leave: (id: string) =>
     api.delete<{ message: string }>(`/rooms/${id}/leave`),
