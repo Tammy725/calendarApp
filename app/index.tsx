@@ -1280,7 +1280,7 @@ export default function HomeScreen() {
               initParticipantsForRoom(code);
               joinRoom(code);
               roomsApi.create({
-                code: roomCode,
+                code,
                 name: planName,
                 dateStart: fromDate ? new Date(fromDate).toISOString() : undefined,
                 dateEnd: toDate ? new Date(toDate).toISOString() : undefined,
@@ -1394,7 +1394,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                   const deepLink = `https://dist-psi-three-65.vercel.app/plan/${codigo}`;
+                   const deepLink = `https://dist-psi-three-65.vercel.app`;
                   if (s.isEmail) {
                     const subject = encodeURIComponent(
                       "Te invito a un plan en MiApp",
@@ -1634,6 +1634,7 @@ export default function HomeScreen() {
               setJoining(true);
               const code = joinInput.trim().toUpperCase();
               const match = createdPlans.find((p) => p.code === code);
+              const name = joinName.trim();
               if (match) {
                 setPlanName(match.name);
                 setFromDate(match.fromDate);
@@ -1648,26 +1649,45 @@ export default function HomeScreen() {
                   match.customEndHour ?? TIME_PERIODS[pi].endHour,
                 );
                 setGroupSize(match.groupSize);
-                setRoomCode(code);
-                joinRoom(code);
-                const name = joinName.trim();
-                const ac = getUnusedColor(code);
-                addParticipant(code, {
-                  name,
-                  initial: name[0].toUpperCase(),
-                  color: ac.color,
-                  bg: ac.bg,
-                  status: "conectado",
-                });
-                setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
-                setJoining(false);
-                setJoinInput("");
-                setJoinName("");
-                setScreen("invitar");
               } else {
-                setJoining(false);
-                Alert.alert("No encontrado", "No hay un plan con ese código");
+                setPlanName(`Plan ${code}`);
+                setFromDate(new Date());
+                setToDate(new Date(Date.now() + 86400000));
+                setDurationIdx(0);
+                setPeriodIdx(3);
+                setCustomStartHour(8);
+                setCustomEndHour(20);
+                setGroupSize(2);
+                setCreatedPlans((prev) => [
+                  ...prev,
+                  {
+                    code,
+                    name: `Plan ${code}`,
+                    fromDate: new Date(),
+                    toDate: new Date(Date.now() + 86400000),
+                    durationIdx: 0,
+                    periodIdx: 3,
+                    customStartHour: 8,
+                    customEndHour: 20,
+                    groupSize: 2,
+                  },
+                ]);
               }
+              setRoomCode(code);
+              joinRoom(code);
+              const ac = getUnusedColor(code);
+              addParticipant(code, {
+                name,
+                initial: name[0].toUpperCase(),
+                color: ac.color,
+                bg: ac.bg,
+                status: "conectado",
+              });
+              setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
+              setJoining(false);
+              setJoinInput("");
+              setJoinName("");
+              setScreen("invitar");
             }}
           >
             <Text style={{ color: "#fff", fontSize: 17, fontWeight: "600" }}>
