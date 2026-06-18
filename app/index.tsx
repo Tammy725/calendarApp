@@ -3,6 +3,7 @@ import { calendarApi } from "@/lib/api/calendar";
 import { roomsApi } from "@/lib/api/rooms";
 import { connectSocket, joinRoom } from "@/lib/socket";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useLocalSearchParams } from 'expo-router';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -240,6 +241,13 @@ function TopNav({
 }
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams<{ code?: string }>();
+  useEffect(() => {
+    if (params.code) {
+      setJoinInput(params.code);
+      setScreen("join");
+    }
+  }, []);
   const [screen, setScreen] = useState("inicio");
   const [planName, setPlanName] = useState("");
   const [fromDate, setFromDate] = useState<Date | null>(null);
@@ -1394,7 +1402,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                   const deepLink = `https://dist-psi-three-65.vercel.app`;
+                   const deepLink = `https://dist-psi-three-65.vercel.app/?code=${codigo}`;
                   if (s.isEmail) {
                     const subject = encodeURIComponent(
                       "Te invito a un plan en MiApp",
