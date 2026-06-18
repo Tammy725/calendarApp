@@ -1394,7 +1394,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                   const deepLink = `https://vercel-redirect-plum-eight.vercel.app/plan/${codigo}`;
+                   const deepLink = `https://dist-psi-three-65.vercel.app/plan/${codigo}`;
                   if (s.isEmail) {
                     const subject = encodeURIComponent(
                       "Te invito a un plan en MiApp",
