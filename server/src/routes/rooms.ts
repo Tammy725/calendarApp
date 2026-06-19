@@ -5,39 +5,49 @@ import { AuthRequest } from '../middleware/auth';
 export const roomsRouter = Router();
 
 roomsRouter.post('/', async (req: AuthRequest, res) => {
-  const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, maxParticipants, timezone } = req.body;
+  try {
+    const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, maxParticipants, timezone } = req.body;
 
-  const data: any = {
-    ...(code && { id: code }),
-    name,
-    description,
-    durationMinutes: durationMinutes ?? 60,
-    bufferMinutes: bufferMinutes ?? 15,
-    earliestTime: earliestTime ?? 8,
-    latestTime: latestTime ?? 20,
-    dateStart: dateStart ? new Date(dateStart) : null,
-    dateEnd: dateEnd ? new Date(dateEnd) : null,
-    maxParticipants: maxParticipants ?? 2,
-    timezone: timezone ?? 'UTC',
-    ...(req.userId && { createdById: req.userId }),
-  };
+    if (!name) return res.status(400).json({ error: 'Name is required' });
 
-  if (req.userId) {
-    data.participants = {
-      create: {
-        userId: req.userId,
-        role: 'owner',
-        status: 'ACCEPTED',
-      },
+    const data: any = {
+      ...(code && { id: code }),
+      name,
+      description,
+      durationMinutes: durationMinutes ?? 60,
+      bufferMinutes: bufferMinutes ?? 15,
+      earliestTime: earliestTime ?? 8,
+      latestTime: latestTime ?? 20,
+      dateStart: dateStart ? new Date(dateStart) : null,
+      dateEnd: dateEnd ? new Date(dateEnd) : null,
+      maxParticipants: maxParticipants ?? 2,
+      timezone: timezone ?? 'UTC',
+      ...(req.userId && { createdById: req.userId }),
     };
+
+    if (req.userId) {
+      data.participants = {
+        create: {
+          userId: req.userId,
+          role: 'owner',
+          status: 'ACCEPTED',
+        },
+      };
+    }
+
+    const room = await prisma.schedulingRoom.create({
+      data,
+      include: { participants: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
+    });
+
+    res.status(201).json(room);
+  } catch (e: any) {
+    if (e?.code === 'P2002') {
+      return res.status(409).json({ error: 'Room code already exists' });
+    }
+    console.error('[rooms] create error:', e);
+    res.status(500).json({ error: 'Failed to create room' });
   }
-
-  const room = await prisma.schedulingRoom.create({
-    data,
-    include: { participants: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
-  });
-
-  res.status(201).json(room);
 });
 
 roomsRouter.get('/', async (req: AuthRequest, res) => {

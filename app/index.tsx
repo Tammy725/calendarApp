@@ -483,7 +483,9 @@ export default function HomeScreen() {
         const room = await roomsApi.get(roomCode);
         if (cancelled) return;
         syncParticipantsFromServer(roomCode, room.participants);
-      } catch {}
+      } catch (e) {
+        console.error("[poll] fetchParticipants error:", e);
+      }
     };
     fetchParticipants();
     const interval = setInterval(fetchParticipants, 3000);
@@ -1414,7 +1416,9 @@ export default function HomeScreen() {
                 });
                 const room = await roomsApi.join(code, "Tú");
                 syncParticipantsFromServer(code, room.participants);
-              } catch {}
+              } catch (e) {
+                console.error("[create] API call failed:", e);
+              }
               setScreen("invitar");
               setCompletedSteps((prev) => [...prev, "crear"]);
             }}
@@ -1796,7 +1800,7 @@ export default function HomeScreen() {
 
                 const joinedRoom = await roomsApi.join(code, name);
                 setRoomCode(code);
-                syncParticipantsFromServer(code, joinedRoom.participants);
+                syncParticipantsFromServer(code, joinedRoom?.participants || []);
                 joinRoom(code);
                 setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
                 setJoinInput("");
