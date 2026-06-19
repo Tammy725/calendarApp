@@ -47,6 +47,7 @@ export interface SchedulingRoom {
   latestTime: number | null;
   dateStart: string | null;
   dateEnd: string | null;
+  maxParticipants: number;
   timezone: string;
   status: 'ACTIVE' | 'FINALIZED' | 'CANCELLED';
   createdAt: string;
@@ -89,6 +90,7 @@ export interface CreateRoomInput {
   latestTime?: number;
   dateStart?: string;
   dateEnd?: string;
+  maxParticipants?: number;
   timezone?: string;
 }
 

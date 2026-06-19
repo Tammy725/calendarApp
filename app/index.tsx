@@ -3,6 +3,7 @@ import { calendarApi } from "@/lib/api/calendar";
 import { roomsApi } from "@/lib/api/rooms";
 import { connectSocket, joinRoom } from "@/lib/socket";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import type { RoomParticipant, SchedulingRoom } from "@/lib/types";
 import { useLocalSearchParams } from 'expo-router';
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -345,6 +346,95 @@ export default function HomeScreen() {
     });
   }
 
+  function participantDisplayName(
+    p: RoomParticipant,
+    selfUserId?: string | null,
+  ) {
+    if (p.userId && selfUserId && p.userId === selfUserId) return "Tú";
+    return (
+      p.guestName ||
+      p.user?.name ||
+      p.user?.email?.split("@")[0] ||
+      "Participante"
+    );
+  }
+
+  function buildParticipantsFromServer(
+    code: string,
+    serverParticipants: RoomParticipant[],
+  ): Participant[] {
+    const selfUserId = useAuthStore.getState().user?.id;
+    const accepted = serverParticipants.filter(
+      (p) => p.status === "ACCEPTED" || p.status === "PENDING",
+    );
+    const usedColors = new Set<string>();
+
+    return accepted.map((p, i) => {
+      const name = participantDisplayName(p, selfUserId);
+      const custom = customColorsRef.current[name];
+      let ac =
+        custom ||
+        (i === 0
+          ? { color: "#5B4FDB", bg: "#EEF2FF" }
+          : AVATAR_COLORS[(i - 1) % AVATAR_COLORS.length]);
+      if (usedColors.has(ac.color)) {
+        const fallback =
+          AVATAR_COLORS.find((c) => !usedColors.has(c.color)) || ac;
+        ac = fallback;
+      }
+      usedColors.add(ac.color);
+      return {
+        name,
+        initial: name[0]?.toUpperCase() || "?",
+        color: ac.color,
+        bg: ac.bg,
+        status: "conectado",
+      };
+    });
+  }
+
+  function syncParticipantsFromServer(
+    code: string,
+    serverParticipants: RoomParticipant[],
+  ) {
+    const synced = buildParticipantsFromServer(code, serverParticipants);
+    if (!synced.length) return;
+    setParticipantsByRoom((prev) => ({ ...prev, [code]: synced }));
+  }
+
+  function applyPlanFromServer(serverRoom: SchedulingRoom) {
+    setPlanName(serverRoom.name);
+    setFromDate(
+      serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date(),
+    );
+    setToDate(
+      serverRoom.dateEnd
+        ? new Date(serverRoom.dateEnd)
+        : new Date(Date.now() + 86400000),
+    );
+    const durIdx = [30, 60, 90, 120].indexOf(serverRoom.durationMinutes);
+    setDurationIdx(durIdx >= 0 ? durIdx : 0);
+    setPeriodIdx(3);
+    setCustomStartHour(serverRoom.earliestTime ?? 8);
+    setCustomEndHour(serverRoom.latestTime ?? 20);
+    setGroupSize(serverRoom.maxParticipants ?? 2);
+    return {
+      code: serverRoom.id,
+      name: serverRoom.name,
+      fromDate: serverRoom.dateStart
+        ? new Date(serverRoom.dateStart)
+        : new Date(),
+      toDate: serverRoom.dateEnd
+        ? new Date(serverRoom.dateEnd)
+        : new Date(Date.now() + 86400000),
+      durationIdx: durIdx >= 0 ? durIdx : 0,
+      periodIdx: 3,
+      customStartHour: serverRoom.earliestTime ?? 8,
+      customEndHour: serverRoom.latestTime ?? 20,
+      groupSize: serverRoom.maxParticipants ?? 2,
+    };
+  }
+
   const fetchedRef = useRef(false);
   const calendarConnected = useRef(false);
   const pendingAlert = useRef(false);
@@ -392,34 +482,11 @@ export default function HomeScreen() {
       try {
         const room = await roomsApi.get(roomCode);
         if (cancelled) return;
-        const serverNames = new Set(
-          room.participants.map((p: any) =>
-            p.guestName || p.user?.name || p.user?.email?.split("@")[0] || "",
-          ).filter(Boolean),
-        );
-        setParticipantsByRoom((prev) => {
-          const existing = prev[roomCode] || [];
-          const existingNames = new Set(existing.map((p) => p.name));
-          const missing = [...serverNames].filter(
-            (n) => !existingNames.has(n),
-          );
-          if (!missing.length) return prev;
-          const newOnes = missing.map((name) => {
-            const ac = getUnusedColor(roomCode);
-            return {
-              name,
-              initial: name[0].toUpperCase(),
-              color: ac.color,
-              bg: ac.bg,
-              status: "conectado" as const,
-            };
-          });
-          return { ...prev, [roomCode]: [...existing, ...newOnes] };
-        });
+        syncParticipantsFromServer(roomCode, room.participants);
       } catch {}
     };
     fetchParticipants();
-    const interval = setInterval(fetchParticipants, 5000);
+    const interval = setInterval(fetchParticipants, 3000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -1288,7 +1355,7 @@ export default function HomeScreen() {
         <View style={s1.bottom}>
           <TouchableOpacity
             style={[s1.nextBtn, darkMode && { backgroundColor: "#8B7CF6" }]}
-            onPress={() => {
+            onPress={async () => {
               if (!planName.trim()) {
                 Alert.alert(
                   "Nombre del plan",
@@ -1328,17 +1395,26 @@ export default function HomeScreen() {
               ]);
               initParticipantsForRoom(code);
               joinRoom(code);
-              roomsApi.create({
-                code,
-                name: planName,
-                dateStart: fromDate ? new Date(fromDate).toISOString() : undefined,
-                dateEnd: toDate ? new Date(toDate).toISOString() : undefined,
-                durationMinutes: [30, 60, 90, 120][durationIdx] ?? 60,
-                earliestTime: customStartHour ?? TIME_PERIODS[periodIdx]?.startHour ?? 8,
-                latestTime: customEndHour ?? TIME_PERIODS[periodIdx]?.endHour ?? 20,
-              }).then(() => {
-                roomsApi.join(code, "Tú").catch(() => {});
-              }).catch(() => {});
+              try {
+                await roomsApi.create({
+                  code,
+                  name: planName,
+                  dateStart: fromDate
+                    ? new Date(fromDate).toISOString()
+                    : undefined,
+                  dateEnd: toDate ? new Date(toDate).toISOString() : undefined,
+                  durationMinutes: [30, 60, 90, 120][durationIdx] ?? 60,
+                  earliestTime:
+                    customStartHour ??
+                    TIME_PERIODS[periodIdx]?.startHour ??
+                    8,
+                  latestTime:
+                    customEndHour ?? TIME_PERIODS[periodIdx]?.endHour ?? 20,
+                  maxParticipants: groupSize,
+                });
+                const room = await roomsApi.join(code, "Tú");
+                syncParticipantsFromServer(code, room.participants);
+              } catch {}
               setScreen("invitar");
               setCompletedSteps((prev) => [...prev, "crear"]);
             }}
@@ -1445,21 +1521,22 @@ export default function HomeScreen() {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                   const deepLink = `https://dist-psi-three-65.vercel.app/?code=${codigo}`;
+                  const deepLink = `https://dist-psi-three-65.vercel.app/?code=${codigo}`;
+                  const inviteText = planName.trim()
+                    ? `¡Unite al plan "${planName}"! Tocá este link:\n\n${deepLink}`
+                    : `¡Unite al plan! Tocá este link:\n\n${deepLink}`;
                   if (s.isEmail) {
                     const subject = encodeURIComponent(
-                      "Te invito a un plan en MiApp",
+                      planName.trim()
+                        ? `Te invito a ${planName} en MiApp`
+                        : "Te invito a un plan en MiApp",
                     );
-                    const body = encodeURIComponent(
-                      `¡Unite al plan! Tocá este link:\n\n${deepLink}`,
-                    );
+                    const body = encodeURIComponent(inviteText);
                     await Linking.openURL(
                       `mailto:?subject=${subject}&body=${body}`,
                     );
                   } else {
-                    await Share.share({
-                      message: `¡Unite al plan! Tocá este link:\n\n${deepLink}`,
-                    });
+                    await Share.share({ message: inviteText });
                   }
                 }}
               >
@@ -1683,94 +1760,57 @@ export default function HomeScreen() {
                 return;
               }
               setJoining(true);
-              const code = joinInput.trim().toUpperCase();
-              const match = createdPlans.find((p) => p.code === code);
-              const name = joinName.trim();
-              if (match) {
-                setPlanName(match.name);
-                setFromDate(match.fromDate);
-                setToDate(match.toDate);
-                setDurationIdx(match.durationIdx);
-                setPeriodIdx(match.periodIdx >= 0 ? match.periodIdx : 3);
-                const pi = match.periodIdx >= 0 ? match.periodIdx : 3;
-                setCustomStartHour(
-                  match.customStartHour ?? TIME_PERIODS[pi].startHour,
-                );
-                setCustomEndHour(
-                  match.customEndHour ?? TIME_PERIODS[pi].endHour,
-                );
-                setGroupSize(match.groupSize);
-              } else {
-                const serverRoom = await roomsApi.get(code).catch(() => null);
+              try {
+                const code = joinInput.trim().toUpperCase();
+                const name = joinName.trim();
+                const match = createdPlans.find((p) => p.code === code);
+                let serverRoom = await roomsApi.get(code).catch(() => null);
+
                 if (serverRoom) {
-                  setPlanName(serverRoom.name);
-                  setFromDate(serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date());
-                  setToDate(serverRoom.dateEnd ? new Date(serverRoom.dateEnd) : new Date(Date.now() + 86400000));
-                  const durIdx = [30, 60, 90, 120].indexOf(serverRoom.durationMinutes);
-                  setDurationIdx(durIdx >= 0 ? durIdx : 0);
-                  setPeriodIdx(3);
-                  setCustomStartHour(serverRoom.earliestTime ?? 8);
-                  setCustomEndHour(serverRoom.latestTime ?? 20);
-                  setGroupSize(serverRoom.participants?.length ?? 2);
-                  setCreatedPlans((prev) => [
-                    ...prev,
-                    {
-                      code,
-                      name: serverRoom.name,
-                      fromDate: serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date(),
-                      toDate: serverRoom.dateEnd ? new Date(serverRoom.dateEnd) : new Date(Date.now() + 86400000),
-                      durationIdx: durIdx >= 0 ? durIdx : 0,
-                      periodIdx: 3,
-                      customStartHour: serverRoom.earliestTime ?? 8,
-                      customEndHour: serverRoom.latestTime ?? 20,
-                      groupSize: serverRoom.participants?.length ?? 2,
-                    },
-                  ]);
+                  const planEntry = applyPlanFromServer(serverRoom);
+                  setCreatedPlans((prev) => {
+                    if (prev.some((p) => p.code === code)) return prev;
+                    return [...prev, planEntry];
+                  });
+                } else if (match) {
+                  setPlanName(match.name);
+                  setFromDate(match.fromDate);
+                  setToDate(match.toDate);
+                  setDurationIdx(match.durationIdx);
+                  setPeriodIdx(match.periodIdx >= 0 ? match.periodIdx : 3);
+                  const pi = match.periodIdx >= 0 ? match.periodIdx : 3;
+                  setCustomStartHour(
+                    match.customStartHour ?? TIME_PERIODS[pi].startHour,
+                  );
+                  setCustomEndHour(
+                    match.customEndHour ?? TIME_PERIODS[pi].endHour,
+                  );
+                  setGroupSize(match.groupSize);
                 } else {
-                  setPlanName(`Plan ${code}`);
-                  setFromDate(new Date());
-                  setToDate(new Date(Date.now() + 86400000));
-                  setDurationIdx(0);
-                  setPeriodIdx(3);
-                  setCustomStartHour(8);
-                  setCustomEndHour(20);
-                  setGroupSize(2);
-                  setCreatedPlans((prev) => [
-                    ...prev,
-                    {
-                      code,
-                      name: `Plan ${code}`,
-                      fromDate: new Date(),
-                      toDate: new Date(Date.now() + 86400000),
-                      durationIdx: 0,
-                      periodIdx: 3,
-                      customStartHour: 8,
-                      customEndHour: 20,
-                      groupSize: 2,
-                    },
-                  ]);
+                  Alert.alert(
+                    "No encontrado",
+                    "No hay un plan con ese código. Verifica que el link sea correcto.",
+                  );
+                  return;
                 }
+
+                const joinedRoom = await roomsApi.join(code, name);
+                setRoomCode(code);
+                syncParticipantsFromServer(code, joinedRoom.participants);
+                joinRoom(code);
+                setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
+                setJoinInput("");
+                setJoinName("");
+                setScreen("invitar");
+              } catch {
+                Alert.alert("Error", "No se pudo unir al plan. Intenta de nuevo.");
+              } finally {
+                setJoining(false);
               }
-              setRoomCode(code);
-              joinRoom(code);
-              roomsApi.join(code, name).catch(() => {});
-              const ac = getUnusedColor(code);
-              addParticipant(code, {
-                name,
-                initial: name[0].toUpperCase(),
-                color: ac.color,
-                bg: ac.bg,
-                status: "conectado",
-              });
-              setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
-              setJoining(false);
-              setJoinInput("");
-              setJoinName("");
-              setScreen("invitar");
             }}
           >
             <Text style={{ color: "#fff", fontSize: 17, fontWeight: "600" }}>
-              {joining ? "Buscando..." : "Unirse"}
+              {joining ? "Uniéndote..." : "Unirse"}
             </Text>
           </TouchableOpacity>
         </View>

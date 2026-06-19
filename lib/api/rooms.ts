@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { SchedulingRoom, CreateRoomInput, RoomParticipant, Suggestion, RoomStats } from '../types';
+import type { SchedulingRoom, CreateRoomInput, Suggestion, RoomStats } from '../types';
 
 export const roomsApi = {
   list: () => api.get<SchedulingRoom[]>('/rooms'),
@@ -18,7 +18,7 @@ export const roomsApi = {
     api.post<RoomParticipant>(`/rooms/${id}/invite`, { email }),
 
   join: (id: string, name?: string) =>
-    api.post<RoomParticipant>(`/rooms/${id}/join`, name ? { name } : undefined),
+    api.post<SchedulingRoom>(`/rooms/${id}/join`, name ? { name } : undefined),
 
   leave: (id: string) =>
     api.delete<{ message: string }>(`/rooms/${id}/leave`),

@@ -5,7 +5,7 @@ import { AuthRequest } from '../middleware/auth';
 export const roomsRouter = Router();
 
 roomsRouter.post('/', async (req: AuthRequest, res) => {
-  const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, timezone } = req.body;
+  const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, maxParticipants, timezone } = req.body;
 
   const data: any = {
     ...(code && { id: code }),
@@ -17,6 +17,7 @@ roomsRouter.post('/', async (req: AuthRequest, res) => {
     latestTime: latestTime ?? 20,
     dateStart: dateStart ? new Date(dateStart) : null,
     dateEnd: dateEnd ? new Date(dateEnd) : null,
+    maxParticipants: maxParticipants ?? 2,
     timezone: timezone ?? 'UTC',
     ...(req.userId && { createdById: req.userId }),
   };
@@ -140,6 +141,13 @@ roomsRouter.post('/:id/invite', async (req: AuthRequest, res) => {
   res.status(201).json(participant);
 });
 
+const roomWithParticipantsInclude = {
+  createdBy: { select: { id: true, name: true, email: true, avatar: true } },
+  participants: {
+    include: { user: { select: { id: true, name: true, email: true, avatar: true, timezone: true } } },
+  },
+} as const;
+
 roomsRouter.post('/:id/join', async (req: AuthRequest, res) => {
   const roomId = req.params.id as string;
   const { name } = req.body;
@@ -158,23 +166,31 @@ roomsRouter.post('/:id/join', async (req: AuthRequest, res) => {
           data: { status: 'ACCEPTED' },
         });
       }
-      return res.json(existing);
+    } else {
+      await prisma.roomParticipant.create({
+        data: { roomId, userId: req.userId, status: 'ACCEPTED' },
+      });
     }
+  } else {
+    if (!name) return res.status(400).json({ error: 'Name is required for anonymous join' });
 
-    const participant = await prisma.roomParticipant.create({
-      data: { roomId, userId: req.userId, status: 'ACCEPTED' },
+    const existingGuest = await prisma.roomParticipant.findFirst({
+      where: { roomId, guestName: name, userId: null },
     });
 
-    return res.status(201).json(participant);
+    if (!existingGuest) {
+      await prisma.roomParticipant.create({
+        data: { roomId, guestName: name, status: 'ACCEPTED' },
+      });
+    }
   }
 
-  if (!name) return res.status(400).json({ error: 'Name is required for anonymous join' });
-
-  const participant = await prisma.roomParticipant.create({
-    data: { roomId, guestName: name, status: 'ACCEPTED' },
+  const updatedRoom = await prisma.schedulingRoom.findUnique({
+    where: { id: roomId },
+    include: roomWithParticipantsInclude,
   });
 
-  res.status(201).json(participant);
+  res.json(updatedRoom);
 });
 
 roomsRouter.delete('/:id/leave', async (req: AuthRequest, res) => {

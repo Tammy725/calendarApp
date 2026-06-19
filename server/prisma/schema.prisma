@@ -101,6 +101,7 @@ model SchedulingRoom {
   latestTime      Int?       @default(20)
   dateStart       DateTime?
   dateEnd         DateTime?
+  maxParticipants Int        @default(2)
   timezone        String     @default("UTC")
   status          RoomStatus @default(ACTIVE)
   createdAt       DateTime   @default(now())
