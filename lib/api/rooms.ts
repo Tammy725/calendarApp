@@ -1,13 +1,18 @@
-import { api } from './client';
-import type { SchedulingRoom, CreateRoomInput, Suggestion, RoomStats } from '../types';
+import type {
+  CreateRoomInput,
+  RoomParticipant,
+  RoomStats,
+  SchedulingRoom,
+  Suggestion,
+} from "../types";
+import { api } from "./client";
 
 export const roomsApi = {
-  list: () => api.get<SchedulingRoom[]>('/rooms'),
+  list: () => api.get<SchedulingRoom[]>("/rooms"),
 
   get: (id: string) => api.get<SchedulingRoom>(`/rooms/${id}`),
 
-  create: (input: CreateRoomInput) =>
-    api.post<SchedulingRoom>('/rooms', input),
+  create: (input: CreateRoomInput) => api.post<SchedulingRoom>("/rooms", input),
 
   update: (id: string, data: Partial<CreateRoomInput & { status: string }>) =>
     api.patch<SchedulingRoom>(`/rooms/${id}`, data),
@@ -20,11 +25,12 @@ export const roomsApi = {
   join: (id: string, name?: string) =>
     api.post<SchedulingRoom>(`/rooms/${id}/join`, name ? { name } : undefined),
 
-  leave: (id: string) =>
-    api.delete<{ message: string }>(`/rooms/${id}/leave`),
+  leave: (id: string) => api.delete<{ message: string }>(`/rooms/${id}/leave`),
 
   computeAvailability: (roomId: string) =>
-    api.post<{ suggestions: Suggestion[]; total: number }>(`/availability/compute/${roomId}`),
+    api.post<{ suggestions: Suggestion[]; total: number }>(
+      `/availability/compute/${roomId}`,
+    ),
 
   getSuggestions: (roomId: string) =>
     api.get<Suggestion[]>(`/availability/suggestions/${roomId}`),
@@ -33,5 +39,7 @@ export const roomsApi = {
     api.get<RoomStats>(`/availability/stats/${roomId}`),
 
   finalize: (roomId: string, suggestionId: string) =>
-    api.post<{ message: string }>(`/availability/finalize/${roomId}`, { suggestionId }),
+    api.post<{ message: string }>(`/availability/finalize/${roomId}`, {
+      suggestionId,
+    }),
 };

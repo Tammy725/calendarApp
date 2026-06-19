@@ -1,11 +1,14 @@
-import { Router } from 'express';
-import { prisma } from '../index';
-import { AuthRequest } from '../middleware/auth';
-import { computeAvailability, getRoomStats } from '../services/availability-engine';
+import { Router } from "express";
+import { prisma } from "../index";
+import { AuthRequest } from "../middleware/auth";
+import {
+  computeAvailability,
+  getRoomStats,
+} from "../services/availability-engine";
 
 export const availabilityRouter = Router();
 
-availabilityRouter.post('/compute/:roomId', async (req: AuthRequest, res) => {
+availabilityRouter.post("/compute/:roomId", async (req: AuthRequest, res) => {
   try {
     const roomId = req.params.roomId as string;
     const room = await prisma.schedulingRoom.findUnique({
@@ -18,15 +21,15 @@ availabilityRouter.post('/compute/:roomId', async (req: AuthRequest, res) => {
     });
 
     if (!room || room.participants.length === 0) {
-      return res.status(404).json({ error: 'Room not found or not a member' });
+      return res.status(404).json({ error: "Room not found or not a member" });
     }
 
     const results = await computeAvailability(roomId);
 
     const top = results
-      .filter(r => r.score > 0)
+      .filter((r) => r.score > 0)
       .slice(0, 20)
-      .map(r => ({
+      .map((r) => ({
         start: r.slot.start,
         end: r.slot.end,
         score: r.score,
@@ -37,28 +40,31 @@ availabilityRouter.post('/compute/:roomId', async (req: AuthRequest, res) => {
 
     res.json({ suggestions: top, total: results.length });
   } catch (error) {
-    console.error('Availability compute error:', error);
-    res.status(500).json({ error: 'Failed to compute availability' });
+    console.error("Availability compute error:", error);
+    res.status(500).json({ error: "Failed to compute availability" });
   }
 });
 
-availabilityRouter.get('/suggestions/:roomId', async (req: AuthRequest, res) => {
-  const suggestions = await prisma.suggestion.findMany({
-    where: { roomId: req.params.roomId as string },
-    orderBy: { score: 'desc' },
-    take: 50,
-  });
+availabilityRouter.get(
+  "/suggestions/:roomId",
+  async (req: AuthRequest, res) => {
+    const suggestions = await prisma.suggestion.findMany({
+      where: { roomId: req.params.roomId as string },
+      orderBy: { score: "desc" },
+      take: 50,
+    });
 
-  res.json(suggestions);
-});
+    res.json(suggestions);
+  },
+);
 
-availabilityRouter.get('/stats/:roomId', async (req: AuthRequest, res) => {
+availabilityRouter.get("/stats/:roomId", async (req: AuthRequest, res) => {
   const stats = await getRoomStats(req.params.roomId as string);
-  if (!stats) return res.status(404).json({ error: 'No availability data' });
+  if (!stats) return res.status(404).json({ error: "No availability data" });
   res.json(stats);
 });
 
-availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
+availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
   try {
     const roomId = req.params.roomId as string;
     const { dayOfWeek, startHour, endHour } = req.body;
@@ -67,7 +73,7 @@ availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
       where: { id: roomId },
       include: {
         participants: {
-          where: { status: 'ACCEPTED' },
+          where: { status: "ACCEPTED" },
           include: {
             user: {
               include: {
@@ -87,7 +93,7 @@ availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
       },
     });
 
-    if (!room) return res.status(404).json({ error: 'Room not found' });
+    if (!room) return res.status(404).json({ error: "Room not found" });
 
     const now = new Date();
     const dayDiff = (dayOfWeek - now.getDay() + 7) % 7;
@@ -103,8 +109,19 @@ availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
     const results = [];
 
     for (const participant of room.participants) {
-      if (!participant.user) continue;
-      const user = participant.user;
+      const p = participant as typeof participant & {
+        guestName?: string | null;
+      };
+      if (!p.user) {
+        // Guest participant without a user account → assume free (no calendar to check)
+        results.push({
+          userId: p.guestName || `guest-${p.id}`,
+          name: p.guestName || "Invitado",
+          free: true,
+        });
+        continue;
+      }
+      const user = p.user;
       let hasConflict = false;
 
       for (const account of user.calendarAccounts) {
@@ -133,28 +150,29 @@ availabilityRouter.post('/check/:roomId', async (req: AuthRequest, res) => {
       from: checkFrom.toISOString(),
       to: checkTo.toISOString(),
       results,
-      allFree: results.every(r => r.free),
+      allFree: results.every((r) => r.free),
       totalParticipants: results.length,
     });
   } catch (error) {
-    console.error('Check error:', error);
-    res.status(500).json({ error: 'Failed to check availability' });
+    console.error("Check error:", error);
+    res.status(500).json({ error: "Failed to check availability" });
   }
 });
 
-availabilityRouter.post('/finalize/:roomId', async (req: AuthRequest, res) => {
+availabilityRouter.post("/finalize/:roomId", async (req: AuthRequest, res) => {
   const { suggestionId } = req.body;
   const roomId = req.params.roomId as string;
 
   const room = await prisma.schedulingRoom.findFirst({
     where: { id: roomId, createdById: req.userId! },
   });
-  if (!room) return res.status(404).json({ error: 'Room not found or not owner' });
+  if (!room)
+    return res.status(404).json({ error: "Room not found or not owner" });
 
   await prisma.schedulingRoom.update({
     where: { id: roomId },
-    data: { status: 'FINALIZED' },
+    data: { status: "FINALIZED" },
   });
 
-  res.json({ message: 'Time finalized' });
+  res.json({ message: "Time finalized" });
 });
