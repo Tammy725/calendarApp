@@ -1,4 +1,4 @@
-import { roomsApi } from "@/lib/api/rooms";
+import { getRoomByCode, joinRoomAsParticipant } from "@/lib/supabase";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -25,9 +25,9 @@ export default function JoinScreen() {
     setJoining(true);
     try {
       const roomCode = code.trim().toUpperCase();
-      const room = await roomsApi.get(roomCode);
+      const room = await getRoomByCode(roomCode);
       if (room) {
-        await roomsApi.join(roomCode);
+        await joinRoomAsParticipant(roomCode);
         router.push(`/plan/${roomCode}`);
       } else {
         Alert.alert("No encontrado", "No hay un plan con ese código");

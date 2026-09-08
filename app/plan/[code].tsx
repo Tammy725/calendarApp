@@ -1,6 +1,13 @@
 import { calendarApi } from "@/lib/api/calendar";
 import { api } from "@/lib/api/client";
-import { roomsApi } from "@/lib/api/rooms";
+import {
+  fetchParticipantsByRoom,
+  getRoomByCode,
+  joinRoomAsParticipant,
+  participantName,
+  type ParticipantRow,
+  type RoomRow,
+} from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
@@ -51,37 +58,53 @@ export default function PlanScreen() {
   const [endHour, setEndHour] = useState(20);
   const [results, setResults] = useState<CheckResult[]>([]);
   const [checked, setChecked] = useState(false);
+  const [room, setRoom] = useState<RoomRow | null>(null);
+  const [participants, setParticipants] = useState<ParticipantRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    data: room,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["room", code],
-    queryFn: () => roomsApi.get(code!),
-    enabled: !!code,
-    refetchInterval: 3000,
-  });
+  const loadRoom = async () => {
+    if (!code) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const found = await getRoomByCode(code);
+    setRoom(found);
+    if (found) {
+      const rows = await fetchParticipantsByRoom(found.id);
+      setParticipants(rows);
+    }
+    setIsLoading(false);
+  };
 
-  const joinMutation = useMutation({
-    mutationFn: () => roomsApi.join(code!),
-    onSuccess: () => refetch(),
-  });
+  useEffect(() => {
+    loadRoom();
+    const interval = setInterval(loadRoom, 3000);
+    return () => clearInterval(interval);
+  }, [code]);
+
+  const joinMutation = {
+    mutate: () => {
+      if (code) joinRoomAsParticipant(code);
+    },
+  };
 
   const syncMutation = useMutation({
     mutationFn: () => calendarApi.syncAll(),
   });
 
+  const joinedKey = participants.map((p) => p.user_id).join(',');
+
   useEffect(() => {
     if (room && user) {
-      const isMember = room.participants.some((p) => p.userId === user.id);
+      const isMember = participants.some((p) => p.user_id === user.id);
       if (!isMember) {
         joinMutation.mutate();
       } else {
         syncMutation.mutate();
       }
     }
-  }, [room?.id, user?.id]);
+  }, [room?.id, joinedKey, user?.id]);
 
   const handleCheck = async () => {
     try {
@@ -139,38 +162,24 @@ export default function PlanScreen() {
 
       <View style={styles.participantsSection}>
         <Text style={styles.sectionTitle}>
-          Participantes ({room.participants.length})
+          Participantes ({participants.length})
         </Text>
-        {room.participants.map((p) => (
-          <View key={p.id} style={styles.participantRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(p.user?.name || p.guestName || p.user?.email || "?")
-                  .charAt(0)
-                  .toUpperCase()}
-              </Text>
+        {participants.map((p) => {
+          const name = participantName(p, user?.id);
+          return (
+            <View key={p.id} style={styles.participantRow}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.participantName}>{name}</Text>
+              <View style={[styles.badge, styles.accepted]}>
+                <Text style={styles.acceptedText}>Conectado</Text>
+              </View>
             </View>
-            <Text style={styles.participantName}>
-              {p.user?.name || p.guestName || p.user?.email || "Participante"}
-            </Text>
-            <View
-              style={[
-                styles.badge,
-                p.status === "ACCEPTED" ? styles.accepted : styles.pending,
-              ]}
-            >
-              <Text
-                style={
-                  p.status === "ACCEPTED"
-                    ? styles.acceptedText
-                    : styles.pendingText
-                }
-              >
-                {p.status === "ACCEPTED" ? "Conectado" : "Pendiente"}
-              </Text>
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       <View style={styles.checkSection}>

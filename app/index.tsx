@@ -1,18 +1,25 @@
 import { handleGoogleSignIn } from "@/lib/api/auth";
 import { calendarApi } from "@/lib/api/calendar";
-import { roomsApi } from "@/lib/api/rooms";
 import { connectSocket, joinRoom } from "@/lib/socket";
+import {
+  createRoom,
+  fetchParticipantsByRoom,
+  getRoomByCode,
+  joinRoomAsParticipant,
+  participantName,
+  type ParticipantRow,
+} from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import type { RoomParticipant, SchedulingRoom } from "@/lib/types";
 import { useLocalSearchParams } from 'expo-router';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import * as Calendar from "expo-calendar";
+import * as Calendar from "expo-calendar/legacy";
 import * as Clipboard from "expo-clipboard";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   Modal,
@@ -296,6 +303,7 @@ export default function HomeScreen() {
   const [participantsByRoom, setParticipantsByRoom] = useState<
     Record<string, Participant[]>
   >({});
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [customColors, setCustomColors] = useState<
     Record<string, { color: string; bg: string }>
   >({});
@@ -346,31 +354,16 @@ export default function HomeScreen() {
     });
   }
 
-  function participantDisplayName(
-    p: RoomParticipant,
-    selfUserId?: string | null,
-  ) {
-    if (p.userId && selfUserId && p.userId === selfUserId) return "Tú";
-    return (
-      p.guestName ||
-      p.user?.name ||
-      p.user?.email?.split("@")[0] ||
-      "Participante"
-    );
-  }
-
-  function buildParticipantsFromServer(
+  function buildParticipantsFromRows(
     code: string,
-    serverParticipants: RoomParticipant[],
+    rows: ParticipantRow[],
   ): Participant[] {
     const selfUserId = useAuthStore.getState().user?.id;
-    const accepted = serverParticipants.filter(
-      (p) => p.status === "ACCEPTED" || p.status === "PENDING",
-    );
+    const accepted = rows;
     const usedColors = new Set<string>();
 
     return accepted.map((p, i) => {
-      const name = participantDisplayName(p, selfUserId);
+      const name = participantName(p, selfUserId);
       const custom = customColorsRef.current[name];
       let ac =
         custom ||
@@ -393,46 +386,19 @@ export default function HomeScreen() {
     });
   }
 
-  function syncParticipantsFromServer(
-    code: string,
-    serverParticipants: RoomParticipant[],
-  ) {
-    const synced = buildParticipantsFromServer(code, serverParticipants);
-    if (!synced.length) return;
-    setParticipantsByRoom((prev) => ({ ...prev, [code]: synced }));
-  }
-
-  function applyPlanFromServer(serverRoom: SchedulingRoom) {
-    setPlanName(serverRoom.name);
-    setFromDate(
-      serverRoom.dateStart ? new Date(serverRoom.dateStart) : new Date(),
-    );
-    setToDate(
-      serverRoom.dateEnd
-        ? new Date(serverRoom.dateEnd)
-        : new Date(Date.now() + 86400000),
-    );
-    const durIdx = [30, 60, 90, 120].indexOf(serverRoom.durationMinutes);
-    setDurationIdx(durIdx >= 0 ? durIdx : 0);
-    setPeriodIdx(3);
-    setCustomStartHour(serverRoom.earliestTime ?? 8);
-    setCustomEndHour(serverRoom.latestTime ?? 20);
-    setGroupSize(serverRoom.maxParticipants ?? 2);
-    return {
-      code: serverRoom.id,
-      name: serverRoom.name,
-      fromDate: serverRoom.dateStart
-        ? new Date(serverRoom.dateStart)
-        : new Date(),
-      toDate: serverRoom.dateEnd
-        ? new Date(serverRoom.dateEnd)
-        : new Date(Date.now() + 86400000),
-      durationIdx: durIdx >= 0 ? durIdx : 0,
-      periodIdx: 3,
-      customStartHour: serverRoom.earliestTime ?? 8,
-      customEndHour: serverRoom.latestTime ?? 20,
-      groupSize: serverRoom.maxParticipants ?? 2,
-    };
+  async function syncParticipantsFromSupabase(code: string) {
+    setLoadingParticipants(true);
+    try {
+      const rows = await fetchParticipantsByRoom(code);
+      const synced = buildParticipantsFromRows(code, rows);
+      if (synced.length) {
+        setParticipantsByRoom((prev) => ({ ...prev, [code]: synced }));
+      }
+    } catch (e) {
+      console.error("[supabase] syncParticipants error:", e);
+    } finally {
+      setLoadingParticipants(false);
+    }
   }
 
   const fetchedRef = useRef(false);
@@ -479,12 +445,16 @@ export default function HomeScreen() {
     if (screen !== "invitar" || !roomCode) return;
     let cancelled = false;
     const fetchParticipants = async () => {
+      if (cancelled) return;
       try {
-        const room = await roomsApi.get(roomCode);
+        const rows = await fetchParticipantsByRoom(roomCode);
         if (cancelled) return;
-        syncParticipantsFromServer(roomCode, room.participants);
+        const synced = buildParticipantsFromRows(roomCode, rows);
+        if (synced.length) {
+          setParticipantsByRoom((prev) => ({ ...prev, [roomCode]: synced }));
+        }
       } catch (e) {
-        console.error("[poll] fetchParticipants error:", e);
+        console.error("[supabase poll] fetchParticipants error:", e);
       }
     };
     fetchParticipants();
@@ -1398,26 +1368,11 @@ export default function HomeScreen() {
               initParticipantsForRoom(code);
               joinRoom(code);
               try {
-                await roomsApi.create({
-                  code,
-                  name: planName,
-                  dateStart: fromDate
-                    ? new Date(fromDate).toISOString()
-                    : undefined,
-                  dateEnd: toDate ? new Date(toDate).toISOString() : undefined,
-                  durationMinutes: [30, 60, 90, 120][durationIdx] ?? 60,
-                  earliestTime:
-                    customStartHour ??
-                    TIME_PERIODS[periodIdx]?.startHour ??
-                    8,
-                  latestTime:
-                    customEndHour ?? TIME_PERIODS[periodIdx]?.endHour ?? 20,
-                  maxParticipants: groupSize,
-                });
-                const room = await roomsApi.join(code, "Tú");
-                syncParticipantsFromServer(code, room.participants);
+                await createRoom({ code, name: planName });
+                await joinRoomAsParticipant(code, "Tú");
+                await syncParticipantsFromSupabase(code);
               } catch (e) {
-                console.error("[create] API call failed:", e);
+                console.error("[create] Supabase call failed:", e);
               }
               setScreen("invitar");
               setCompletedSteps((prev) => [...prev, "crear"]);
@@ -1564,6 +1519,19 @@ export default function HomeScreen() {
           >
             Personas unidas · {participants.length}/{groupSize}
           </Text>
+          {loadingParticipants && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <ActivityIndicator size="small" color="#5B4FDB" />
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: darkMode ? DARK.textSecondary : "#6B7280",
+                }}
+              >
+                Sincronizando participantes…
+              </Text>
+            </View>
+          )}
           {participants.map((p, i) => {
             const custom = customColors[p.name];
             const ac =
@@ -1768,14 +1736,33 @@ export default function HomeScreen() {
                 const code = joinInput.trim().toUpperCase();
                 const name = joinName.trim();
                 const match = createdPlans.find((p) => p.code === code);
-                let serverRoom = await roomsApi.get(code).catch(() => null);
+                const foundRoom = await getRoomByCode(code);
 
-                if (serverRoom) {
-                  const planEntry = applyPlanFromServer(serverRoom);
-                  setCreatedPlans((prev) => {
-                    if (prev.some((p) => p.code === code)) return prev;
-                    return [...prev, planEntry];
-                  });
+                if (foundRoom) {
+                  if (match) {
+                    setPlanName(match.name);
+                    setFromDate(match.fromDate);
+                    setToDate(match.toDate);
+                    setDurationIdx(match.durationIdx);
+                    setPeriodIdx(match.periodIdx >= 0 ? match.periodIdx : 3);
+                    const pi = match.periodIdx >= 0 ? match.periodIdx : 3;
+                    setCustomStartHour(
+                      match.customStartHour ?? TIME_PERIODS[pi].startHour,
+                    );
+                    setCustomEndHour(
+                      match.customEndHour ?? TIME_PERIODS[pi].endHour,
+                    );
+                    setGroupSize(match.groupSize);
+                  } else {
+                    setPlanName(foundRoom.name);
+                    setFromDate(new Date());
+                    setToDate(new Date(Date.now() + 86400000));
+                    setDurationIdx(1);
+                    setPeriodIdx(3);
+                    setCustomStartHour(8);
+                    setCustomEndHour(20);
+                    setGroupSize(2);
+                  }
                 } else if (match) {
                   setPlanName(match.name);
                   setFromDate(match.fromDate);
@@ -1798,9 +1785,9 @@ export default function HomeScreen() {
                   return;
                 }
 
-                const joinedRoom = await roomsApi.join(code, name);
+                await joinRoomAsParticipant(code, name);
                 setRoomCode(code);
-                syncParticipantsFromServer(code, joinedRoom?.participants || []);
+                await syncParticipantsFromSupabase(code);
                 joinRoom(code);
                 setCompletedSteps((prev) => [...new Set([...prev, "crear"])]);
                 setJoinInput("");
