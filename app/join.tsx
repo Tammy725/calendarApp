@@ -1,33 +1,42 @@
-import { useState } from 'react';
+import { roomsApi } from "@/lib/api/rooms";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { roomsApi } from '@/lib/api/rooms';
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function JoinScreen() {
   const insets = useSafeAreaInsets();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const [joining, setJoining] = useState(false);
 
   const handleJoin = async () => {
     if (!code.trim()) {
-      Alert.alert('Código requerido', 'Ingresa el código del plan');
+      Alert.alert("Código requerido", "Ingresa el código del plan");
       return;
     }
     setJoining(true);
     try {
-      const rooms = await roomsApi.list();
-      const match = rooms.find((r) => r.name.includes(code.trim().toUpperCase()));
-      if (match) {
-        await roomsApi.join(match.id);
-        router.push(`/plan/${match.id}`);
+      const roomCode = code.trim().toUpperCase();
+      const room = await roomsApi.get(roomCode);
+      if (room) {
+        await roomsApi.join(roomCode);
+        router.push(`/plan/${roomCode}`);
       } else {
-        Alert.alert('No encontrado', 'No hay un plan con ese código');
+        Alert.alert("No encontrado", "No hay un plan con ese código");
       }
     } catch {
-      Alert.alert('Error', 'No se pudo unir al plan');
+      Alert.alert(
+        "No encontrado",
+        "No hay un plan con ese código. Verificá que el código sea correcto.",
+      );
     } finally {
       setJoining(false);
     }
@@ -35,12 +44,17 @@ export default function JoinScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={[styles.backBtn, { top: insets.top + 8 }]} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={[styles.backBtn, { top: insets.top + 8 }]}
+        onPress={() => router.back()}
+      >
         <Text style={styles.backText}>←</Text>
       </TouchableOpacity>
       <View style={styles.content}>
         <Text style={styles.title}>Unirse a un Plan</Text>
-        <Text style={styles.subtitle}>Ingresa el código que te compartieron</Text>
+        <Text style={styles.subtitle}>
+          Ingresa el código que te compartieron
+        </Text>
 
         <TextInput
           style={styles.input}
@@ -51,8 +65,16 @@ export default function JoinScreen() {
           autoCorrect={false}
         />
 
-        <TouchableOpacity style={styles.joinButton} onPress={handleJoin} disabled={joining}>
-          {joining ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinText}>Unirse</Text>}
+        <TouchableOpacity
+          style={styles.joinButton}
+          onPress={handleJoin}
+          disabled={joining}
+        >
+          {joining ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.joinText}>Unirse</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -60,22 +82,40 @@ export default function JoinScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: "#fff", justifyContent: "center" },
   backBtn: {
-    position: 'absolute', top: 60, left: 16, zIndex: 10,
-    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+    position: "absolute",
+    top: 60,
+    left: 16,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backText: { fontSize: 28, color: '#5B4FDB', fontWeight: '600' },
-  content: { padding: 24, gap: 16, alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: '700', color: '#11181C' },
-  subtitle: { fontSize: 16, color: '#687076', textAlign: 'center' },
+  backText: { fontSize: 28, color: "#5B4FDB", fontWeight: "600" },
+  content: { padding: 24, gap: 16, alignItems: "center" },
+  title: { fontSize: 28, fontWeight: "700", color: "#11181C" },
+  subtitle: { fontSize: 16, color: "#687076", textAlign: "center" },
   input: {
-    width: '100%', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 12,
-    padding: 16, fontSize: 20, color: '#11181C', textAlign: 'center', letterSpacing: 4,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 20,
+    color: "#11181C",
+    textAlign: "center",
+    letterSpacing: 4,
     marginTop: 20,
   },
   joinButton: {
-    width: '100%', backgroundColor: '#5B4FDB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10,
+    width: "100%",
+    backgroundColor: "#5B4FDB",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 10,
   },
-  joinText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  joinText: { color: "#fff", fontSize: 17, fontWeight: "600" },
 });
