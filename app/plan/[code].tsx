@@ -177,7 +177,7 @@ export default function PlanScreen() {
               </View>
               <Text style={styles.participantName}>{name}</Text>
               <View style={[styles.badge, styles.accepted]}>
-                <Text style={styles.acceptedText}>Conectado</Text>
+                <Text style={styles.acceptedText}>Unido</Text>
               </View>
             </View>
           );
