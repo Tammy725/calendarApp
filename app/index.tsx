@@ -11,7 +11,7 @@ import {
 } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+  type DateTimePickerChangeEvent,
 } from "@react-native-community/datetimepicker";
 import * as Calendar from "expo-calendar/legacy";
 import * as Clipboard from "expo-clipboard";
@@ -992,8 +992,7 @@ function formatCellTime(hourIdx: number): string {
       return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
     };
 
-    const onDateChange = (_: DateTimePickerEvent, selected?: Date) => {
-      if (!selected) return;
+    const onDateChange = (_: DateTimePickerChangeEvent, selected: Date) => {
       setTempDate(selected);
       pickedDateRef.current = selected;
       if (Platform.OS === "android") {
@@ -1362,7 +1361,7 @@ function formatCellTime(hourIdx: number): string {
               value={tempDate}
               mode="date"
               display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={onDateChange}
+              onValueChange={onDateChange}
               minimumDate={
                 showDatePicker === "to" && fromDate ? fromDate : undefined
               }

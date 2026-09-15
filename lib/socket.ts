@@ -10,20 +10,7 @@ export function getSocket(): Socket | null {
 }
 
 export function connectSocket(): Socket | null {
-  if (socket?.connected) return socket;
-  const token = useAuthStore.getState().token;
-  if (!token) return null;
-  socket = io(API_BASE, {
-    auth: { token },
-    transports: ['websocket'],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 2000,
-  });
-  socket.on('connect', () => console.log('Socket connected'));
-  socket.on('disconnect', () => console.log('Socket disconnected'));
-  socket.on('connect_error', (err) => console.log('Socket error:', err.message));
-  return socket;
+  return null;
 }
 
 export function disconnectSocket() {
