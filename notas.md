@@ -45,7 +45,12 @@ hola
 
 ### `server/src/routes/availability.ts`
 - Revisa disponibilidad de todos
+- Busca primero en la base (Prisma); si el plan no está, lee los planes guardados en Supabase
 - Sugiere los mejores horarios según los calendarios
+
+### `server/src/lib/supabase.ts`
+- Cliente de Supabase del lado del servidor (con service role)
+- `fetchRoomAndParticipants`: trae un plan y sus participantes desde Supabase para calcular disponibilidad
 
 ### `server/src/routes/calendar.ts`
 - Sincroniza Google Calendar
@@ -71,6 +76,17 @@ hola
 
 ### `lib/api/calendar.ts`
 - Funciones para sincronizar y leer el calendario
+
+### `lib/supabase.ts`
+- Lee y crea planes (rooms) y participantes directo en Supabase (con código de invitación)
+- `joinRoomAsParticipant`: une a un usuario o invitado; si no hay cuenta ni nombre, genera un ID único propio para no mezclar invitados
+
+### `lib/socket.ts`
+- Conexión al WebSocket del servidor
+
+### `lib/invite-url.ts`
+- URL base de invitación (vercel-redirect) concentrada en un solo lugar
+- `inviteLink(code)` arma el link de invitación de un plan
 
 ### `lib/stores/auth-store.ts`
 - Guarda el usuario y el token (aunque cierres el app)
