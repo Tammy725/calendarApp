@@ -58,6 +58,7 @@ export function participantName(
   selfUserId: string | null | undefined,
 ): string {
   if (row.user_id && selfUserId && row.user_id === selfUserId) return 'Tú';
+  if (row.guest_name?.startsWith('anon-')) return 'Participante';
   return row.guest_name || 'Participante';
 }
 
@@ -142,6 +143,17 @@ export async function getRoomByCode(code: string): Promise<RoomRow | null> {
   return (data as RoomRow | null) ?? null;
 }
 
+function anonymousGuestId(): string {
+  const id =
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `anon-${id}`;
+}
+
+const SESSION_ANON_ID = anonymousGuestId();
+
 export async function joinRoomAsParticipant(
   code: string,
   guestName?: string,
@@ -150,6 +162,7 @@ export async function joinRoomAsParticipant(
   if (!room) return { ok: false };
 
   const selfUserId = useAuthStore.getState().user?.id ?? null;
+  const effectiveGuestName = selfUserId ? undefined : guestName || SESSION_ANON_ID;
 
   let query = supabase
     .from('participants')
@@ -157,10 +170,8 @@ export async function joinRoomAsParticipant(
     .eq('room_id', room.id);
   if (selfUserId) {
     query = query.eq('user_id', selfUserId);
-  } else if (guestName) {
-    query = query.eq('guest_name', guestName);
   } else {
-    query = query.is('guest_name', null);
+    query = query.eq('guest_name', effectiveGuestName);
   }
   const { data } = await query.maybeSingle();
   if (data?.id) return { ok: true };
@@ -168,7 +179,7 @@ export async function joinRoomAsParticipant(
   const { error } = await supabase.from('participants').insert({
     room_id: room.id,
     user_id: selfUserId,
-    guest_name: guestName ?? null,
+    guest_name: effectiveGuestName,
   });
 
   if (error) {

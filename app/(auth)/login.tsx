@@ -1,7 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { handleGoogleSignIn } from '@/lib/api/auth';
-import { loadUser } from '@/lib/api/auth';
+import { handleGoogleSignIn, loadUser } from '@/lib/api/auth';
 
 export default function LoginScreen() {
   const handleLogin = async () => {

@@ -1,4 +1,5 @@
 import { connectSocket, disconnectSocket, joinRoom } from "@/lib/socket";
+import { inviteLink } from "@/lib/invite-url";
 import { useLocalSearchParams } from "expo-router";
 import {
   createRoom,
@@ -443,6 +444,7 @@ export default function HomeScreen() {
     if (screen !== "crear" || periodIdx < 0) return;
     desdeCenterRef.current = customStartHour;
     hastaCenterRef.current = customEndHour;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     forceRender((n) => n + 1);
     desdeRef.current?.scrollTo({ y: customStartHour * 36, animated: false });
     hastaRef.current?.scrollTo({ y: customEndHour * 36, animated: false });
@@ -527,10 +529,12 @@ export default function HomeScreen() {
   const colCount = Math.max(1, dayColumns.length);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(0);
   }, [fromDate, toDate]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(0);
     if (screen === "heatmap" && !fetchedRef.current) {
       fetchedRef.current = true;
@@ -539,6 +543,7 @@ export default function HomeScreen() {
     if (screen !== "heatmap") {
       fetchedRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   const [userGrid, setUserGrid] = useState<boolean[][]>([]);
@@ -546,6 +551,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!colCount) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserGrid((prev) => {
       if (prev.length === 24 && prev[0]?.length === colCount) return prev;
       return Array.from({ length: 24 }, () => Array(colCount).fill(false));
@@ -1575,7 +1581,7 @@ function formatCellTime(hourIdx: number): string {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                  const deepLink = `https://vercel-redirect-plum-eight.vercel.app/plan/${codigo}`;
+                  const deepLink = inviteLink(codigo);
                   const inviteText = planName.trim()
                     ? `¡Unite al plan "${planName}"! Tocá este link:\n\n${deepLink}`
                     : `¡Unite al plan! Tocá este link:\n\n${deepLink}`;

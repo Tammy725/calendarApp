@@ -9,9 +9,9 @@ import {
   type RoomRow,
 } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -62,7 +62,7 @@ export default function PlanScreen() {
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadRoom = async () => {
+  const loadRoom = useCallback(async () => {
     if (!code) {
       setIsLoading(false);
       return;
@@ -75,13 +75,14 @@ export default function PlanScreen() {
       setParticipants(rows);
     }
     setIsLoading(false);
-  };
+  }, [code]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRoom();
     const interval = setInterval(loadRoom, 3000);
     return () => clearInterval(interval);
-  }, [code]);
+  }, [loadRoom]);
 
   const joinMutation = {
     mutate: () => {
@@ -104,6 +105,7 @@ export default function PlanScreen() {
         syncMutation.mutate();
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, joinedKey, user?.id]);
 
   const handleCheck = async () => {
