@@ -128,7 +128,7 @@ export default function PlanScreen() {
   const handleShare = async () => {
     if (!room) return;
     await Share.share({
-      message: `📅 Únete a mi plan en MiApp con el código: ${room.name}\n\nDescarga la app y usa el código para unirte.`,
+      message: `📅 Únete a mi plan en MiApp con el código: ${room.code}\n\nDescarga la app y usa el código para unirte.`,
     });
   };
 
