@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { fetchRoomAndParticipants } from "../lib/supabase";
 import {
   computeAvailability,
   getRoomStats,
@@ -64,25 +65,35 @@ availabilityRouter.get("/stats/:roomId", async (req: AuthRequest, res) => {
   res.json(stats);
 });
 
-availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
-  try {
-    const roomId = req.params.roomId as string;
-    const { dayOfWeek, startHour, endHour } = req.body;
+interface CalendarEventLike {
+  startTime: Date;
+  endTime: Date;
+}
 
-    const room = await prisma.schedulingRoom.findUnique({
-      where: { id: roomId },
-      include: {
-        participants: {
-          where: { status: "ACCEPTED" },
-          include: {
-            user: {
-              include: {
-                calendarAccounts: {
-                  include: {
-                    events: {
-                      where: {
-                        isAllDay: false,
-                      },
+interface CalendarAccountLike {
+  events: CalendarEventLike[];
+}
+
+interface CheckEntry {
+  userId: string;
+  name: string;
+  user: { calendarAccounts: CalendarAccountLike[] } | null;
+}
+
+async function loadCheckEntries(roomId: string): Promise<CheckEntry[] | null> {
+  const room = await prisma.schedulingRoom.findUnique({
+    where: { id: roomId },
+    include: {
+      participants: {
+        where: { status: "ACCEPTED" },
+        include: {
+          user: {
+            include: {
+              calendarAccounts: {
+                include: {
+                  events: {
+                    where: {
+                      isAllDay: false,
                     },
                   },
                 },
@@ -91,9 +102,79 @@ availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
           },
         },
       },
-    });
+    },
+  });
 
-    if (!room) return res.status(404).json({ error: "Room not found" });
+  if (room) {
+    return room.participants.map((p) => {
+      if (!p.user) {
+        return {
+          userId: p.guestName || `guest-${p.id}`,
+          name: p.guestName || "Invitado",
+          user: null,
+        };
+      }
+      return {
+        userId: p.user.id,
+        name: p.user.name || p.user.email,
+        user: p.user as CheckEntry["user"],
+      };
+    });
+  }
+
+  // Fallback: the plan may live in Supabase (rooms keyed by invitation code)
+  const supabaseRoom = await fetchRoomAndParticipants(roomId);
+  if (!supabaseRoom) return null;
+
+  const entries: CheckEntry[] = [];
+  for (const participant of supabaseRoom.participants) {
+    if (participant.user_id) {
+      const user = await prisma.user.findUnique({
+        where: { id: participant.user_id },
+        include: {
+          calendarAccounts: {
+            include: {
+              events: {
+                where: {
+                  isAllDay: false,
+                },
+              },
+            },
+          },
+        },
+      });
+      entries.push(
+        user
+          ? {
+              userId: user.id,
+              name: user.name || user.email,
+              user: user as CheckEntry["user"],
+            }
+          : {
+              userId: participant.user_id,
+              name: participant.guest_name || "Invitado",
+              user: null,
+            },
+      );
+    } else {
+      entries.push({
+        userId: participant.id,
+        name: participant.guest_name || "Invitado",
+        user: null,
+      });
+    }
+  }
+
+  return entries;
+}
+
+availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
+  try {
+    const roomId = req.params.roomId as string;
+    const { dayOfWeek, startHour, endHour } = req.body;
+
+    const entries = await loadCheckEntries(roomId);
+    if (!entries) return res.status(404).json({ error: "Room not found" });
 
     const now = new Date();
     const dayDiff = (dayOfWeek - now.getDay() + 7) % 7;
@@ -106,25 +187,18 @@ availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
     const checkTo = new Date(targetDate);
     checkTo.setHours(endHour, 0, 0, 0);
 
-    const results = [];
-
-    for (const participant of room.participants) {
-      const p = participant as typeof participant & {
-        guestName?: string | null;
-      };
-      if (!p.user) {
+    const results = entries.map((entry) => {
+      if (!entry.user) {
         // Guest participant without a user account → assume free (no calendar to check)
-        results.push({
-          userId: p.guestName || `guest-${p.id}`,
-          name: p.guestName || "Invitado",
+        return {
+          userId: entry.userId,
+          name: entry.name,
           free: true,
-        });
-        continue;
+        };
       }
-      const user = p.user;
       let hasConflict = false;
 
-      for (const account of user.calendarAccounts) {
+      for (const account of entry.user.calendarAccounts) {
         for (const event of account.events) {
           const eStart = new Date(event.startTime);
           const eEnd = new Date(event.endTime);
@@ -137,12 +211,12 @@ availabilityRouter.post("/check/:roomId", async (req: AuthRequest, res) => {
         if (hasConflict) break;
       }
 
-      results.push({
-        userId: user.id,
-        name: user.name || user.email,
+      return {
+        userId: entry.userId,
+        name: entry.name,
         free: !hasConflict,
-      });
-    }
+      };
+    });
 
     res.json({
       dayOfWeek,

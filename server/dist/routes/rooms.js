@@ -5,34 +5,46 @@ const express_1 = require("express");
 const index_1 = require("../index");
 exports.roomsRouter = (0, express_1.Router)();
 exports.roomsRouter.post('/', async (req, res) => {
-    const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, timezone } = req.body;
-    const data = {
-        ...(code && { id: code }),
-        name,
-        description,
-        durationMinutes: durationMinutes ?? 60,
-        bufferMinutes: bufferMinutes ?? 15,
-        earliestTime: earliestTime ?? 8,
-        latestTime: latestTime ?? 20,
-        dateStart: dateStart ? new Date(dateStart) : null,
-        dateEnd: dateEnd ? new Date(dateEnd) : null,
-        timezone: timezone ?? 'UTC',
-        ...(req.userId && { createdById: req.userId }),
-    };
-    if (req.userId) {
-        data.participants = {
-            create: {
-                userId: req.userId,
-                role: 'owner',
-                status: 'ACCEPTED',
-            },
+    try {
+        const { code, name, description, durationMinutes, bufferMinutes, earliestTime, latestTime, dateStart, dateEnd, maxParticipants, timezone } = req.body;
+        if (!name)
+            return res.status(400).json({ error: 'Name is required' });
+        const data = {
+            ...(code && { id: code }),
+            name,
+            description,
+            durationMinutes: durationMinutes ?? 60,
+            bufferMinutes: bufferMinutes ?? 15,
+            earliestTime: earliestTime ?? 8,
+            latestTime: latestTime ?? 20,
+            dateStart: dateStart ? new Date(dateStart) : null,
+            dateEnd: dateEnd ? new Date(dateEnd) : null,
+            maxParticipants: maxParticipants ?? 2,
+            timezone: timezone ?? 'UTC',
+            ...(req.userId && { createdById: req.userId }),
         };
+        if (req.userId) {
+            data.participants = {
+                create: {
+                    userId: req.userId,
+                    role: 'owner',
+                    status: 'ACCEPTED',
+                },
+            };
+        }
+        const room = await index_1.prisma.schedulingRoom.create({
+            data,
+            include: { participants: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
+        });
+        res.status(201).json(room);
     }
-    const room = await index_1.prisma.schedulingRoom.create({
-        data,
-        include: { participants: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
-    });
-    res.status(201).json(room);
+    catch (e) {
+        if (e?.code === 'P2002') {
+            return res.status(409).json({ error: 'Room code already exists' });
+        }
+        console.error('[rooms] create error:', e);
+        res.status(500).json({ error: 'Failed to create room' });
+    }
 });
 exports.roomsRouter.get('/', async (req, res) => {
     if (!req.userId)
@@ -129,6 +141,12 @@ exports.roomsRouter.post('/:id/invite', async (req, res) => {
     });
     res.status(201).json(participant);
 });
+const roomWithParticipantsInclude = {
+    createdBy: { select: { id: true, name: true, email: true, avatar: true } },
+    participants: {
+        include: { user: { select: { id: true, name: true, email: true, avatar: true, timezone: true } } },
+    },
+};
 exports.roomsRouter.post('/:id/join', async (req, res) => {
     const roomId = req.params.id;
     const { name } = req.body;
@@ -146,19 +164,30 @@ exports.roomsRouter.post('/:id/join', async (req, res) => {
                     data: { status: 'ACCEPTED' },
                 });
             }
-            return res.json(existing);
         }
-        const participant = await index_1.prisma.roomParticipant.create({
-            data: { roomId, userId: req.userId, status: 'ACCEPTED' },
-        });
-        return res.status(201).json(participant);
+        else {
+            await index_1.prisma.roomParticipant.create({
+                data: { roomId, userId: req.userId, status: 'ACCEPTED' },
+            });
+        }
     }
-    if (!name)
-        return res.status(400).json({ error: 'Name is required for anonymous join' });
-    const participant = await index_1.prisma.roomParticipant.create({
-        data: { roomId, guestName: name, status: 'ACCEPTED' },
+    else {
+        if (!name)
+            return res.status(400).json({ error: 'Name is required for anonymous join' });
+        const existingGuest = await index_1.prisma.roomParticipant.findFirst({
+            where: { roomId, guestName: name, userId: null },
+        });
+        if (!existingGuest) {
+            await index_1.prisma.roomParticipant.create({
+                data: { roomId, guestName: name, status: 'ACCEPTED' },
+            });
+        }
+    }
+    const updatedRoom = await index_1.prisma.schedulingRoom.findUnique({
+        where: { id: roomId },
+        include: roomWithParticipantsInclude,
     });
-    res.status(201).json(participant);
+    res.json(updatedRoom);
 });
 exports.roomsRouter.delete('/:id/leave', async (req, res) => {
     if (!req.userId)
