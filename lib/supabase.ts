@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { useAuthStore } from './stores/auth-store';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -33,6 +34,23 @@ export interface RoomRow {
   id: string;
   code: string;
   name: string;
+  from_date: string | null;
+  to_date: string | null;
+  start_hour: number | null;
+  end_hour: number | null;
+  duration_idx: number | null;
+  period_idx: number | null;
+  group_size: number | null;
+}
+
+export function toDateString(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+export function parseDateString(s: string): Date {
+  return new Date(`${s}T00:00:00`);
 }
 
 export function participantName(
@@ -60,13 +78,38 @@ export async function fetchParticipantsByRoom(
   return (data ?? []) as unknown as ParticipantRow[];
 }
 
+const COLS_MISSING_CODES = ['42703', 'PGRST204'];
+
 export async function createRoom(room: {
   code: string;
   name: string;
+  fromDate?: Date;
+  toDate?: Date;
+  startHour?: number;
+  endHour?: number;
+  durationIdx?: number;
+  periodIdx?: number;
+  groupSize?: number;
 }): Promise<{ ok: boolean }> {
-  const { error } = await supabase
-    .from('rooms')
-    .insert({ id: room.code, code: room.code, name: room.name });
+  let { error } = await supabase.from('rooms').insert({
+    id: room.code,
+    code: room.code,
+    name: room.name,
+    from_date: room.fromDate ? toDateString(room.fromDate) : null,
+    to_date: room.toDate ? toDateString(room.toDate) : null,
+    start_hour: room.startHour ?? null,
+    end_hour: room.endHour ?? null,
+    duration_idx: room.durationIdx ?? null,
+    period_idx: room.periodIdx ?? null,
+    group_size: room.groupSize ?? null,
+  });
+
+  if (COLS_MISSING_CODES.includes(error?.code ?? '')) {
+    const { error: baseError } = await supabase
+      .from('rooms')
+      .insert({ id: room.code, code: room.code, name: room.name });
+    error = baseError ?? null;
+  }
 
   if (error) {
     console.error('[supabase] createRoom error:', error);
@@ -76,11 +119,21 @@ export async function createRoom(room: {
 }
 
 export async function getRoomByCode(code: string): Promise<RoomRow | null> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('rooms')
-    .select('id, code, name')
+    .select(
+      'id, code, name, from_date, to_date, start_hour, end_hour, duration_idx, period_idx, group_size',
+    )
     .eq('code', code)
     .maybeSingle();
+
+  if (COLS_MISSING_CODES.includes(error?.code ?? '')) {
+    ({ data, error } = await supabase
+      .from('rooms')
+      .select('id, code, name')
+      .eq('code', code)
+      .maybeSingle());
+  }
 
   if (error) {
     console.error('[supabase] getRoomByCode error:', error);
@@ -96,7 +149,21 @@ export async function joinRoomAsParticipant(
   const room = await getRoomByCode(code);
   if (!room) return { ok: false };
 
-  const selfUserId = null;
+  const selfUserId = useAuthStore.getState().user?.id ?? null;
+
+  let query = supabase
+    .from('participants')
+    .select('id')
+    .eq('room_id', room.id);
+  if (selfUserId) {
+    query = query.eq('user_id', selfUserId);
+  } else if (guestName) {
+    query = query.eq('guest_name', guestName);
+  } else {
+    query = query.is('guest_name', null);
+  }
+  const { data } = await query.maybeSingle();
+  if (data?.id) return { ok: true };
 
   const { error } = await supabase.from('participants').insert({
     room_id: room.id,

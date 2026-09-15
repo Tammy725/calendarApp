@@ -1,16 +1,15 @@
-import { handleGoogleSignIn } from "@/lib/api/auth";
-import { calendarApi } from "@/lib/api/calendar";
-import { connectSocket, joinRoom } from "@/lib/socket";
+import { connectSocket, disconnectSocket, joinRoom } from "@/lib/socket";
+import { useLocalSearchParams } from "expo-router";
 import {
   createRoom,
   fetchParticipantsByRoom,
   getRoomByCode,
   joinRoomAsParticipant,
+  parseDateString,
   participantName,
   type ParticipantRow,
 } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import { useLocalSearchParams } from 'expo-router';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -132,50 +131,13 @@ const DARK = {
   textMuted: "#73777c",
 };
 
-const OPTIONS = [
-  {
-    day: "Viernes 17 ene",
-    time: "6:00 – 8:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-  {
-    day: "Viernes 17 ene",
-    time: "8:00 – 10:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-  {
-    day: "Jueves 16 ene",
-    time: "5:00 – 7:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-  {
-    day: "Jueves 16 ene",
-    time: "7:00 – 9:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-  {
-    day: "Miércoles 15 ene",
-    time: "7:00 – 9:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-  {
-    day: "Miércoles 15 ene",
-    time: "5:00 – 7:00 PM · 2h",
-    count: 4,
-    color: "#10B981",
-    bg: "#D1FAE5",
-  },
-];
+type PlanOption = {
+  day: string;
+  time: string;
+  count: number;
+  color: string;
+  bg: string;
+};
 
 const STATUS_TEXT: Record<string, string> = {
   conectado: "conectado ✓",
@@ -255,7 +217,7 @@ export default function HomeScreen() {
       setJoinInput(params.code);
       setScreen("join");
     }
-  }, []);
+  }, [params.code]);
   const [screen, setScreen] = useState("inicio");
   const [planName, setPlanName] = useState("");
   const [fromDate, setFromDate] = useState<Date | null>(null);
@@ -273,9 +235,9 @@ export default function HomeScreen() {
   );
   const [tempDate, setTempDate] = useState(new Date());
   const pickedDateRef = useRef(new Date());
-  const [selectedOption, setSelectedOption] = useState<
-    (typeof OPTIONS)[0] | null
-  >(null);
+  const [selectedOption, setSelectedOption] = useState<PlanOption | null>(
+    null,
+  );
   const [confirmedDay, setConfirmedDay] = useState("");
   const [confirmedTime, setConfirmedTime] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -309,6 +271,8 @@ export default function HomeScreen() {
   >({});
   const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   const participants = useMemo(
     () => participantsByRoom[roomCode] || [],
@@ -352,6 +316,15 @@ export default function HomeScreen() {
       bg: "#EEF2FF",
       status: "conectado",
     });
+  }
+
+  async function generateUniqueRoomCode() {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const existing = await getRoomByCode(code);
+      if (!existing) return code;
+    }
+    return null;
   }
 
   function buildParticipantsFromRows(
@@ -438,6 +411,7 @@ export default function HomeScreen() {
     s.on("user-joined", onUserJoined);
     return () => {
       s.off("user-joined", onUserJoined);
+      disconnectSocket();
     };
   }, [roomCode]);
 
@@ -603,6 +577,57 @@ export default function HomeScreen() {
     return grid;
   }
 
+  const bestOptions = useMemo<PlanOption[]>(() => {
+    const cols = dayColumns;
+    if (!cols.length) return [];
+    const colsCount = cols.length;
+    const grid: number[][] = Array.from({ length: 24 }, () =>
+      Array(colsCount).fill(0),
+    );
+    for (let ri = 0; ri < 24; ri++) {
+      for (let ci = 0; ci < colsCount; ci++) {
+        if (!userGrid[ri]?.[ci] && !googleBusyGrid[ri]?.[ci]) {
+          grid[ri][ci]++;
+        }
+      }
+    }
+    const totalP = participants.length || 1;
+    const fmtClock = (h: number) => {
+      const c = ((h % 24) + 24) % 24;
+      const a = c >= 12 ? "PM" : "AM";
+      const h12 = c === 0 ? 12 : c > 12 ? c - 12 : c;
+      return `${h12}:00 ${a}`;
+    };
+    const all: PlanOption[] = [];
+    for (let ci = 0; ci < colsCount; ci++) {
+      let dayMatches = 0;
+      for (let si = 0; si < 24; si++) {
+        const h = parseInt(HOURS[si]);
+        if (h < customStartHour || h + 2 > customEndHour) continue;
+        let v = totalP;
+        for (let k = 0; k < 2; k++) {
+          v = Math.min(v, grid[si + k]?.[ci] ?? 0);
+        }
+        if (v < 1) continue;
+        all.push({
+          day: cols[ci].label,
+          time: `${fmtClock(h)} – ${fmtClock(h + 2)} · 2h`,
+          count: v,
+          color: "#10B981",
+          bg: "#D1FAE5",
+        });
+        if (++dayMatches >= 4) break;
+      }
+    }
+    all.sort(
+      (a, b) =>
+        b.count - a.count ||
+        a.day.localeCompare(b.day) ||
+        a.time.localeCompare(b.time),
+    );
+    return all.slice(0, 12);
+  }, [userGrid, googleBusyGrid, dayColumns, customStartHour, customEndHour, participants]);
+
   async function fetchDeviceCalendarEvents() {
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
@@ -722,11 +747,6 @@ export default function HomeScreen() {
 
   const handleAddToGoogleCalendar = async () => {
     try {
-      if (!useAuthStore.getState().isAuthenticated) {
-        const user = await handleGoogleSignIn();
-        if (!user) return;
-      }
-
       const day = confirmedDay || selectedOption?.day;
       const time = confirmedTime || selectedOption?.time;
       if (!day || !time) {
@@ -740,26 +760,70 @@ export default function HomeScreen() {
         return;
       }
 
-      const { htmlLink } = await calendarApi.createEvent({
+      const startDate = new Date(parsed.start);
+      const endDate = new Date(parsed.end);
+      if (
+        endDate <= startDate &&
+        endDate.getHours() === 0 &&
+        endDate.getMinutes() === 0
+      ) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+      if (startDate >= endDate) {
+        Alert.alert(
+          "Error",
+          "La hora de fin debe ser posterior a la de inicio",
+        );
+        return;
+      }
+
+      let { status } = await Calendar.getCalendarPermissionsAsync();
+      if (status !== "granted") {
+        status = (await Calendar.requestCalendarPermissionsAsync()).status;
+      }
+      if (status !== "granted") {
+        Alert.alert(
+          "Permiso requerido",
+          "Concedé acceso al calendario para guardar el evento",
+        );
+        return;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(
+        Calendar.EntityTypes.EVENT,
+      );
+      const writable = calendars.filter((c) => c.allowsModifications);
+      if (!writable.length) {
+        Alert.alert(
+          "Error",
+          "No hay un calendario editable en el dispositivo",
+        );
+        return;
+      }
+
+      const preferred =
+        writable.find(
+          (c) =>
+            /google|gmail/i.test(c.title || "") ||
+            (c.source && /google|gmail/i.test(c.source.name || "")) ||
+            /google|gmail/i.test(c.ownerAccount || ""),
+        ) ||
+        writable.find((c) => c.isPrimary) ||
+        writable[0];
+
+      await Calendar.createEventAsync(preferred.id, {
         title: planName || "Evento",
-        description: `Plan: ${planName}\nDía: ${day}\nHorario: ${time}`,
-        startTime: parsed.start,
-        endTime: parsed.end,
+        notes: `Plan: ${planName}\nDía: ${day}\nHorario: ${time}`,
+        startDate,
+        endDate,
       });
 
-      Alert.alert("✅ Agregado a Google Calendar", "", [
-        { text: "Ver en Google", onPress: () => Linking.openURL(htmlLink) },
-        { text: "OK" },
-      ]);
+      Alert.alert(
+        "✅ Agregado a tu calendario",
+        `"${planName || "Evento"}" se guardó en "${preferred.title}".`,
+      );
     } catch (error: any) {
-      if (error?.message?.includes("No calendar connected")) {
-        Alert.alert(
-          "Sin conexión",
-          'Conectá tu calendario primero desde la pantalla "Conectar"',
-        );
-      } else {
-        Alert.alert("Error", error?.message || "No se pudo crear el evento");
-      }
+      Alert.alert("Error", error?.message || "No se pudo crear el evento");
     }
   };
 
@@ -789,15 +853,14 @@ export default function HomeScreen() {
     return `${fd} - ${td}${periodIdx >= 0 ? ` · ${TIME_PERIODS[periodIdx].label}` : ""}`;
   }
 
-  function formatCellTime(hourIdx: number): string {
+function formatCellTime(hourIdx: number): string {
     const start = parseInt(HOURS[hourIdx]);
-    const end = customEndHour;
     const fmt = (h: number) => {
       const a = h >= 12 ? "PM" : "AM";
       const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
       return `${h12}:00 ${a}`;
     };
-    return `${fmt(start)} – ${fmt(end)}`;
+    return `${fmt(start)} – ${fmt(start + 1)}`;
   }
 
   const filteredRowIndices = useMemo(() => {
@@ -1327,6 +1390,7 @@ export default function HomeScreen() {
         <View style={s1.bottom}>
           <TouchableOpacity
             style={[s1.nextBtn, darkMode && { backgroundColor: "#8B7CF6" }]}
+            disabled={creating}
             onPress={async () => {
               if (!planName.trim()) {
                 Alert.alert(
@@ -1346,39 +1410,71 @@ export default function HomeScreen() {
                 Alert.alert("Franja horaria", "Selecciona una franja horaria");
                 return;
               }
-              const code = Math.random()
-                .toString(36)
-                .substring(2, 8)
-                .toUpperCase();
-              setRoomCode(code);
-              setCreatedPlans((prev) => [
-                ...prev,
-                {
+              setCreating(true);
+              try {
+                const code = await generateUniqueRoomCode();
+                if (!code) {
+                  Alert.alert(
+                    "Error",
+                    "No se pudo crear el plan. Inténtalo de nuevo.",
+                  );
+                  return;
+                }
+                setRoomCode(code);
+                setCreatedPlans((prev) => [
+                  ...prev,
+                  {
+                    code,
+                    name: planName,
+                    fromDate: new Date(fromDate),
+                    toDate: new Date(toDate),
+                    durationIdx,
+                    periodIdx,
+                    customStartHour,
+                    customEndHour,
+                    groupSize,
+                  },
+                ]);
+                initParticipantsForRoom(code);
+                const created = await createRoom({
                   code,
                   name: planName,
-                  fromDate: new Date(fromDate),
-                  toDate: new Date(toDate),
+                  fromDate,
+                  toDate,
+                  startHour: customStartHour,
+                  endHour: customEndHour,
                   durationIdx,
                   periodIdx,
-                  customStartHour,
-                  customEndHour,
                   groupSize,
-                },
-              ]);
-              initParticipantsForRoom(code);
-              joinRoom(code);
-              try {
-                await createRoom({ code, name: planName });
+                });
+                if (!created.ok) {
+                  Alert.alert(
+                    "Error",
+                    "No se pudo guardar el plan. Inténtalo de nuevo.",
+                  );
+                  return;
+                }
+                joinRoom(code);
                 await joinRoomAsParticipant(code, "Tú");
                 await syncParticipantsFromSupabase(code);
+                setScreen("invitar");
+                setCompletedSteps((prev) => [...prev, "crear"]);
               } catch (e) {
                 console.error("[create] Supabase call failed:", e);
+                Alert.alert(
+                  "Error",
+                  "Ocurrió un problema al crear el plan. Inténtalo de nuevo.",
+                );
+              } finally {
+                setCreating(false);
               }
-              setScreen("invitar");
-              setCompletedSteps((prev) => [...prev, "crear"]);
             }}
           >
-            <Text style={s1.nextBtnText}>Siguiente →</Text>
+            {creating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={s1.nextBtnText}>Siguiente →</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -1480,7 +1576,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={async () => {
                   const codigo = roomCode;
-                  const deepLink = `https://dist-psi-three-65.vercel.app/?code=${codigo}`;
+                  const deepLink = `https://vercel-redirect-plum-eight.vercel.app/plan/${codigo}`;
                   const inviteText = planName.trim()
                     ? `¡Unite al plan "${planName}"! Tocá este link:\n\n${deepLink}`
                     : `¡Unite al plan! Tocá este link:\n\n${deepLink}`;
@@ -1582,7 +1678,9 @@ export default function HomeScreen() {
         <View style={[s2.bottom, { paddingTop: 0 }]}>
           <TouchableOpacity
             style={[s2.nextBtn, darkMode && { backgroundColor: "#8B7CF6" }]}
+            disabled={connecting}
             onPress={async () => {
+              setConnecting(true);
               const { status } =
                 await Calendar.requestCalendarPermissionsAsync();
               if (status === "granted") {
@@ -1591,10 +1689,20 @@ export default function HomeScreen() {
                 setCompletedSteps((prev) => [...prev, "invitar"]);
                 pendingAlert.current = true;
                 setScreen("heatmap");
+              } else {
+                Alert.alert(
+                  "Permiso requerido",
+                  "Concedé acceso al calendario para continuar",
+                );
               }
+              setConnecting(false);
             }}
           >
-            <Text style={s2.nextBtnText}>📆 Conectar calendario</Text>
+            {connecting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={s2.nextBtnText}>📆 Conectar calendario</Text>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={[
@@ -1755,13 +1863,30 @@ export default function HomeScreen() {
                     setGroupSize(match.groupSize);
                   } else {
                     setPlanName(foundRoom.name);
-                    setFromDate(new Date());
-                    setToDate(new Date(Date.now() + 86400000));
-                    setDurationIdx(1);
-                    setPeriodIdx(3);
-                    setCustomStartHour(8);
-                    setCustomEndHour(20);
-                    setGroupSize(2);
+                    const firstDate = foundRoom.from_date
+                      ? parseDateString(foundRoom.from_date)
+                      : new Date();
+                    const lastDate = foundRoom.to_date
+                      ? parseDateString(foundRoom.to_date)
+                      : new Date(Date.now() + 86400000);
+                    setFromDate(firstDate);
+                    setToDate(lastDate);
+                    setDurationIdx(foundRoom.duration_idx ?? 0);
+                    const pi = foundRoom.period_idx ?? 3;
+                    setPeriodIdx(pi >= 0 ? pi : 3);
+                    setCustomStartHour(
+                      foundRoom.start_hour ??
+                        (pi >= 0
+                          ? TIME_PERIODS[pi].startHour
+                          : TIME_PERIODS[3].startHour),
+                    );
+                    setCustomEndHour(
+                      foundRoom.end_hour ??
+                        (pi >= 0
+                          ? TIME_PERIODS[pi].endHour
+                          : TIME_PERIODS[3].endHour),
+                    );
+                    setGroupSize(foundRoom.group_size ?? 2);
                   }
                 } else if (match) {
                   setPlanName(match.name);
@@ -2189,16 +2314,22 @@ export default function HomeScreen() {
       "dic",
     ];
     const totalP = participants.length || 1;
-    const filteredOptions = OPTIONS.filter((o) => o.count === 4).map((o) => ({
-      ...o,
-      count: totalP,
-    }));
-    const groups: Record<string, typeof OPTIONS> = {};
-    filteredOptions.forEach((o) => {
+    const allAvailable =
+      bestOptions.length > 0 &&
+      bestOptions.every((o) => o.count === totalP);
+    const groups: Record<string, PlanOption[]> = {};
+    bestOptions.forEach((o) => {
       if (!groups[o.day]) groups[o.day] = [];
       groups[o.day].push(o);
     });
+    const dayOrder: Record<string, number> = {};
+    dayColumns.forEach((c, i) => {
+      if (!(c.label in dayOrder)) dayOrder[c.label] = i;
+    });
     const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+      const ia = dayOrder[a ?? ""];
+      const ib = dayOrder[b ?? ""];
+      if (ia !== undefined && ib !== undefined) return ia - ib;
       const pa = a.split(" "),
         pb = b.split(" ");
       return (
@@ -2230,8 +2361,43 @@ export default function HomeScreen() {
               { color: darkMode ? DARK.textSecondary : "#6B7280" },
             ]}
           >
-            Todos disponibles
+            {allAvailable
+              ? "Todos disponibles"
+              : bestOptions.length
+                ? "Según tus horarios actuales"
+                : "Sin coincidencias"}
           </Text>
+          {bestOptions.length === 0 && (
+            <View style={s5.emptyWrap}>
+              <Text style={[s5.emptyIcon, { opacity: darkMode ? 0.4 : 1 }]}>
+                📭
+              </Text>
+              <Text
+                style={[
+                  s5.emptyTitle,
+                  { color: darkMode ? DARK.text : "#111827" },
+                ]}
+              >
+                Sin horarios disponibles
+              </Text>
+              <Text
+                style={[
+                  s5.emptySub,
+                  { color: darkMode ? DARK.textSecondary : "#6B7280" },
+                ]}
+              >
+                No encontramos franjas de 2h libres para nadie en este rango.
+                Probá liberar algunas horas o ajustar la fecha y el horario del
+                plan.
+              </Text>
+              <TouchableOpacity
+                style={s5.emptyBtn}
+                onPress={() => setScreen("crear")}
+              >
+                <Text style={s5.emptyBtnText}>Ajustar el plan 📅</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {sortedGroups.map(([dayLabel, options]) => (
             <View key={dayLabel}>
               <View style={s5.sectionHeader}>
@@ -2462,7 +2628,7 @@ export default function HomeScreen() {
             style={[s6.gcalBtn, darkMode && { backgroundColor: "#8B7CF6" }]}
             onPress={handleAddToGoogleCalendar}
           >
-            <Text style={s6.gcalBtnText}>Agregar a Google Calendar 📅</Text>
+            <Text style={s6.gcalBtnText}>Agregar a mi calendario 📅</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={s6.shareBtn}
@@ -3617,6 +3783,39 @@ const s5 = StyleSheet.create({
   canText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  emptyWrap: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  emptyBtn: {
+    backgroundColor: "#5B4FDB",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  emptyBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
   },
 });
 
