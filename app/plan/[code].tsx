@@ -109,6 +109,10 @@ export default function PlanScreen() {
   }, [room?.id, joinedKey, user?.id]);
 
   const handleCheck = async () => {
+    if (endHour <= startHour) {
+      Alert.alert("Revisá las horas", "La hora 'Hasta' debe ser después que la hora 'Desde'.");
+      return;
+    }
     try {
       const data = await api.post<CheckResponse>(
         `/availability/check/${code}`,
