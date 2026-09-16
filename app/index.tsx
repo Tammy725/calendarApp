@@ -53,13 +53,13 @@ const AVATAR_COLORS = [
   { color: "#3B82F6", bg: "#DBEAFE" },
 ];
 
-const PEOPLE = [
-  { initial: "T", name: "Tú", color: "#5B4FDB", bg: "#EEF2FF" },
-  { initial: "M", name: "María", color: "#10B981", bg: "#D1FAE5" },
-  { initial: "C", name: "Carlos", color: "#F59E0B", bg: "#FEF3C7" },
-  { initial: "S", name: "Sofía", color: "#DB2777", bg: "#FCE7F3" },
-  { initial: "D", name: "Diego", color: "#9CA3AF", bg: "#F3F4F6" },
-];
+const SELF_ATTENDEE: Participant = {
+  name: "Tú",
+  initial: "T",
+  color: "#5B4FDB",
+  bg: "#EEF2FF",
+  status: "conectado",
+};
 
 const HOURS = [
   "6h",
@@ -2131,7 +2131,7 @@ function formatCellTime(hourIdx: number): string {
             </Text>
           </View>
           <View style={s4.avatarsRow}>
-            {(participants.length ? participants : PEOPLE.slice(0, 4)).map(
+            {(participants.length ? participants : [SELF_ATTENDEE]).map(
               (p, i) => {
                 const ac =
                   i === 0
@@ -2446,7 +2446,7 @@ function formatCellTime(hourIdx: number): string {
                       <View style={s5.avatarsRow}>
                         {(participants.length
                           ? participants
-                          : PEOPLE.slice(0, o.count)
+                          : [SELF_ATTENDEE]
                         ).map((p, j) => {
                           const pc =
                             j === 0
@@ -2569,7 +2569,7 @@ function formatCellTime(hourIdx: number): string {
                 >
                   {confirmedDay ||
                     selectedOption?.day ||
-                    "Miércoles 15 de enero"}
+                    "Por confirmar"}
                 </Text>
                 <Text
                   style={[
@@ -2579,7 +2579,7 @@ function formatCellTime(hourIdx: number): string {
                 >
                   {confirmedTime ||
                     selectedOption?.time ||
-                    "7:00 PM – 9:00 PM · 2 horas"}
+                    "A definir"}
                 </Text>
               </View>
             </View>
@@ -2592,7 +2592,7 @@ function formatCellTime(hourIdx: number): string {
               Asistentes
             </Text>
             <View style={s6.attendRow}>
-              {(participants.length ? participants : PEOPLE.slice(0, 4)).map(
+              {(participants.length ? participants : [SELF_ATTENDEE]).map(
                 (p, i) => {
                   const ac =
                     i === 0
