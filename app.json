@@ -9,7 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:vercel-redirect-plum-eight.vercel.app"]
+      "bundleIdentifier": "com.tamar.sharedapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:vercel-redirect-plum-eight.vercel.app"
+      ]
     },
     "android": {
       "intentFilters": [
@@ -26,7 +32,10 @@
               "pathPrefix": "/plan"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -72,6 +81,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0daacc5f-f07c-408c-b53c-d913fb56643c"
+      }
+    },
+    "owner": "tammy25"
   }
 }
