@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -49,6 +49,28 @@ interface CheckResponse {
   totalParticipants: number;
 }
 
+interface SlotParticipantRow {
+  userId: string;
+  name: string;
+  free: boolean;
+}
+
+interface AvailabilitySlot {
+  start: string;
+  end: string;
+  freeCount: number;
+  total: number;
+  participants: SlotParticipantRow[];
+}
+
+interface SlotsResponse {
+  from: string;
+  to: string;
+  slotMinutes: number;
+  slots: AvailabilitySlot[];
+  totalParticipants: number;
+}
+
 export default function PlanScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const user = useAuthStore((s) => s.user);
@@ -57,6 +79,8 @@ export default function PlanScreen() {
   const [startHour, setStartHour] = useState(18);
   const [endHour, setEndHour] = useState(20);
   const [results, setResults] = useState<CheckResult[]>([]);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [checked, setChecked] = useState(false);
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
@@ -80,8 +104,7 @@ export default function PlanScreen() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRoom();
-    const interval = setInterval(loadRoom, 3000);
-    return () => clearInterval(interval);
+    return () => {};
   }, [loadRoom]);
 
   const joinMutation = {
@@ -94,6 +117,8 @@ export default function PlanScreen() {
     mutationFn: () => calendarApi.syncAll(),
   });
 
+  const syncedRef = useRef(false);
+
   const joinedKey = participants.map((p) => p.user_id).join(',');
 
   useEffect(() => {
@@ -102,32 +127,86 @@ export default function PlanScreen() {
       if (!isMember) {
         joinMutation.mutate();
       } else {
+        syncedRef.current = true;
         syncMutation.mutate();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, joinedKey, user?.id]);
 
-  const handleCheck = async () => {
+  const fetchAvailability = useCallback(
+    async (showSpinner = false) => {
+      if (!code) return;
+      if (!user) {
+        setChecked(false);
+        return;
+      }
+      if (endHour <= startHour) return;
+      if (showSpinner) setRefreshing(true);
+      try {
+        if (!syncedRef.current) {
+          syncedRef.current = true;
+          await syncMutation.mutateAsync();
+        }
+        const now = new Date();
+        const dayDiff = (selectedDay - now.getDay() + 7) % 7;
+        const targetDate = new Date(now);
+        targetDate.setDate(now.getDate() + (dayDiff === 0 ? 7 : dayDiff));
+        targetDate.setHours(0, 0, 0, 0);
+        const from = new Date(targetDate);
+        from.setHours(startHour, 0, 0, 0);
+        const to = new Date(targetDate);
+        to.setHours(endHour, 0, 0, 0);
+
+        const data = await api.post<CheckResponse>(
+          `/availability/check/${code}`,
+          {
+            dayOfWeek: selectedDay,
+            startHour,
+            endHour,
+            from: from.toISOString(),
+            to: to.toISOString(),
+          },
+        );
+        setResults(data.results);
+        setChecked(true);
+
+        const slotsData = await api.post<SlotsResponse>(
+          `/availability/slots/${code}`,
+          {
+            from: from.toISOString(),
+            to: to.toISOString(),
+            slotMinutes: 60,
+          },
+        );
+        setSlots(slotsData.slots);
+      } catch {
+        if (showSpinner) {
+          Alert.alert("Error", "No se pudo verificar disponibilidad");
+        }
+      } finally {
+        if (showSpinner) setRefreshing(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [code, user, selectedDay, startHour, endHour],
+  );
+
+  const handleCheck = () => {
     if (endHour <= startHour) {
       Alert.alert("Revisá las horas", "La hora 'Hasta' debe ser después que la hora 'Desde'.");
       return;
     }
-    try {
-      const data = await api.post<CheckResponse>(
-        `/availability/check/${code}`,
-        {
-          dayOfWeek: selectedDay,
-          startHour,
-          endHour,
-        },
-      );
-      setResults(data.results);
-      setChecked(true);
-    } catch {
-      Alert.alert("Error", "No se pudo verificar disponibilidad");
-    }
+    fetchAvailability(true);
   };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadRoom();
+      if (checked) fetchAvailability();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loadRoom, checked, fetchAvailability]);
 
   const handleShare = async () => {
     if (!room) return;
@@ -136,8 +215,17 @@ export default function PlanScreen() {
     });
   };
 
-  const allFree = checked && results.length > 0 && results.every((r) => r.free);
-  const someoneBusy = checked && results.some((r) => !r.free);
+  const bestSlot = slots.reduce(
+    (best, s) => (s.freeCount > best.freeCount ? s : best),
+    slots[0],
+  );
+
+  const fmtHourRange = (s: { start: string; end: string }) => {
+    const st = new Date(s.start);
+    const en = new Date(s.end);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(st.getHours())}:00 – ${pad(en.getHours())}:00`;
+  };
 
   if (isLoading) {
     return (
@@ -272,54 +360,90 @@ export default function PlanScreen() {
 
       {checked && (
         <View style={styles.resultsSection}>
-          <Text style={styles.sectionTitle}>Resultados</Text>
-
-          {allFree && (
-            <View style={styles.banner}>
-              <Text style={styles.bannerEmoji}>🎉</Text>
-              <Text style={styles.bannerTitle}>¡Todos libres!</Text>
-              <Text style={styles.bannerSub}>
-                {DAYS[selectedDay]} de {startHour}:00 a {endHour}:00
-              </Text>
-            </View>
-          )}
-          {someoneBusy && (
-            <View style={[styles.banner, styles.conflictBanner]}>
-              <Text style={styles.bannerEmoji}>😬</Text>
-              <Text style={[styles.bannerTitle, { color: "#c92a2a" }]}>
-                Hay conflictos
-              </Text>
-              <Text style={styles.bannerSub}>
-                {DAYS[selectedDay]} de {startHour}:00 a {endHour}:00
-              </Text>
+          {refreshing && (
+            <View style={styles.refreshingRow}>
+              <ActivityIndicator size="small" color="#0a7ea4" />
+              <Text style={styles.refreshingText}>Actualizando…</Text>
             </View>
           )}
 
-          {results.map((r) => (
-            <View key={r.userId} style={styles.resultRow}>
-              <View style={styles.resultInfo}>
-                <View
-                  style={[
-                    styles.resultAvatar,
-                    { backgroundColor: r.free ? "#2b8a3e" : "#c92a2a" },
-                  ]}
-                >
-                  <Text style={styles.resultAvatarText}>
-                    {r.name.charAt(0).toUpperCase()}
+          {slots.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>
+                Horarios · {bestSlot ? `${bestSlot.freeCount} de ${bestSlot.total} disponibles` : ""}
+              </Text>
+
+              {bestSlot && bestSlot.freeCount === bestSlot.total ? (
+                <View style={styles.banner}>
+                  <Text style={styles.bannerEmoji}>🎉</Text>
+                  <Text style={styles.bannerTitle}>¡Todos libres!</Text>
+                  <Text style={styles.bannerSub}>
+                    {DAYS[selectedDay]} · {fmtHourRange(bestSlot)}
                   </Text>
                 </View>
-                <Text style={styles.resultName}>{r.name}</Text>
+              ) : bestSlot ? (
+                <View style={[styles.banner, styles.conflictBanner]}>
+                  <Text style={styles.bannerEmoji}>😬</Text>
+                  <Text style={[styles.bannerTitle, { color: "#c92a2a" }]}>
+                    {bestSlot.freeCount} de {bestSlot.total} disponibles
+                  </Text>
+                  <Text style={styles.bannerSub}>Mejor momento: {fmtHourRange(bestSlot)}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.slotList}>
+                {slots.map((s) => {
+                  const slotStyle =
+                    s.freeCount === s.total
+                      ? styles.slotFree
+                      : s.freeCount > 0
+                        ? styles.slotSome
+                        : styles.slotBusy;
+                  const mark =
+                    s.freeCount === s.total ? "✓" : s.freeCount > 0 ? "◐" : "✗";
+                  return (
+                    <View key={s.start} style={styles.slotRow}>
+                      <Text style={styles.slotTime}>{fmtHourRange(s)}</Text>
+                      <Text style={[styles.slotCount, slotStyle]}>
+                        {mark} {s.freeCount} de {s.total} libres
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
-              <Text
-                style={[
-                  styles.resultStatus,
-                  { color: r.free ? "#2b8a3e" : "#c92a2a" },
-                ]}
-              >
-                {r.free ? "✓ Libre" : "✗ Ocupado"}
-              </Text>
-            </View>
-          ))}
+            </>
+          )}
+
+          {results.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Persona por persona</Text>
+              {results.map((r) => (
+                <View key={r.userId} style={styles.resultRow}>
+                  <View style={styles.resultInfo}>
+                    <View
+                      style={[
+                        styles.resultAvatar,
+                        { backgroundColor: r.free ? "#2b8a3e" : "#c92a2a" },
+                      ]}
+                    >
+                      <Text style={styles.resultAvatarText}>
+                        {r.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.resultName}>{r.name}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.resultStatus,
+                      { color: r.free ? "#2b8a3e" : "#c92a2a" },
+                    ]}
+                  >
+                    {r.free ? "✓ Libre" : "✗ Ocupado"}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
         </View>
       )}
     </ScrollView>
@@ -417,6 +541,28 @@ const styles = StyleSheet.create({
   syncButton: { alignItems: "center", paddingVertical: 10 },
   syncText: { fontSize: 14, color: "#0a7ea4", fontWeight: "500" },
   resultsSection: { gap: 10 },
+  refreshingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  refreshingText: { fontSize: 13, color: "#687076" },
+  slotList: { gap: 6 },
+  slotRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  slotTime: { fontSize: 15, fontWeight: "600", color: "#11181C" },
+  slotCount: { fontSize: 15, fontWeight: "700" },
+  slotFree: { color: "#2b8a3e" },
+  slotSome: { color: "#e67700" },
+  slotBusy: { color: "#c92a2a" },
   banner: {
     backgroundColor: "#d3f9d8",
     borderRadius: 16,

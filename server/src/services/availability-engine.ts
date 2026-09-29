@@ -47,7 +47,10 @@ export async function computeAvailability(roomId: string): Promise<AvailabilityR
         where: { status: 'ACCEPTED' },
         include: {
           user: {
-            include: { calendarAccounts: { include: { events: true } } },
+            include: {
+              busyBlocks: true,
+              calendarAccounts: { include: { events: true } },
+            },
           },
         },
       },
@@ -122,6 +125,15 @@ export async function computeAvailability(roomId: string): Promise<AvailabilityR
         }
 
         const busyBlocks: BusyBlock[] = [];
+        for (const block of user.busyBlocks) {
+          const blockStart = new Date(block.startTime);
+          const blockEnd = new Date(block.endTime);
+          if (blockEnd <= slotStart || blockStart >= slotEnd) continue;
+          busyBlocks.push({
+            start: new Date(Math.max(blockStart.getTime(), slotStart.getTime())),
+            end: new Date(Math.min(blockEnd.getTime(), slotEnd.getTime())),
+          });
+        }
         for (const account of user.calendarAccounts) {
           for (const event of account.events) {
             if (event.isAllDay) continue;

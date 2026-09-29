@@ -35,4 +35,40 @@ exports.userRouter.patch('/me', async (req, res) => {
     });
     res.json(user);
 });
+exports.userRouter.get('/busy-blocks', async (req, res) => {
+    const blocks = await index_1.prisma.busyBlock.findMany({
+        where: { userId: req.userId },
+        orderBy: { startTime: 'asc' },
+        select: { id: true, startTime: true, endTime: true, source: true },
+    });
+    res.json(blocks);
+});
+exports.userRouter.post('/busy-blocks', async (req, res) => {
+    const { blocks } = req.body;
+    if (!Array.isArray(blocks)) {
+        return res.status(400).json({ error: 'blocks must be an array' });
+    }
+    const valid = blocks
+        .filter((b) => b && b.start && b.end)
+        .map((b) => {
+        const start = new Date(b.start);
+        const end = new Date(b.end);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start)
+            return null;
+        return { start, end };
+    })
+        .filter((b) => b !== null);
+    await index_1.prisma.$transaction([
+        index_1.prisma.busyBlock.deleteMany({ where: { userId: req.userId } }),
+        index_1.prisma.busyBlock.createMany({
+            data: valid.map((b) => ({
+                userId: req.userId,
+                startTime: b.start,
+                endTime: b.end,
+                source: 'manual',
+            })),
+        }),
+    ]);
+    res.json({ saved: valid.length });
+});
 //# sourceMappingURL=user.js.map

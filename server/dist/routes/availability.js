@@ -62,6 +62,7 @@ async function loadCheckEntries(roomId) {
                 include: {
                     user: {
                         include: {
+                            busyBlocks: true,
                             calendarAccounts: {
                                 include: {
                                     events: {
@@ -103,6 +104,7 @@ async function loadCheckEntries(roomId) {
             const user = await index_1.prisma.user.findUnique({
                 where: { id: participant.user_id },
                 include: {
+                    busyBlocks: true,
                     calendarAccounts: {
                         include: {
                             events: {
@@ -136,48 +138,62 @@ async function loadCheckEntries(roomId) {
     }
     return entries;
 }
+function isEntryFree(entry, checkFrom, checkTo) {
+    if (!entry.user)
+        return true; // Guest participant without a user account → assume free
+    for (const block of entry.user.busyBlocks) {
+        const bStart = new Date(block.startTime);
+        const bEnd = new Date(block.endTime);
+        if (bStart < checkTo && bEnd > checkFrom)
+            return false;
+    }
+    for (const account of entry.user.calendarAccounts) {
+        for (const event of account.events) {
+            const eStart = new Date(event.startTime);
+            const eEnd = new Date(event.endTime);
+            if (eStart < checkTo && eEnd > checkFrom)
+                return false;
+        }
+    }
+    return true;
+}
 exports.availabilityRouter.post("/check/:roomId", async (req, res) => {
     try {
         const roomId = req.params.roomId;
-        const { dayOfWeek, startHour, endHour } = req.body;
+        const { dayOfWeek, startHour, endHour, from, to } = req.body;
         const entries = await loadCheckEntries(roomId);
         if (!entries)
             return res.status(404).json({ error: "Room not found" });
-        const now = new Date();
-        const dayDiff = (dayOfWeek - now.getDay() + 7) % 7;
-        const targetDate = new Date(now);
-        targetDate.setDate(now.getDate() + (dayDiff === 0 ? 7 : dayDiff));
-        targetDate.setHours(0, 0, 0, 0);
-        const checkFrom = new Date(targetDate);
-        checkFrom.setHours(startHour, 0, 0, 0);
-        const checkTo = new Date(targetDate);
-        checkTo.setHours(endHour, 0, 0, 0);
+        let checkFrom;
+        let checkTo;
+        let targetDate;
+        if (from && to) {
+            // Absolute timestamps computed on the client (device-local timezone)
+            checkFrom = new Date(from);
+            checkTo = new Date(to);
+            if (isNaN(checkFrom.getTime()) || isNaN(checkTo.getTime()) || checkTo <= checkFrom) {
+                return res.status(400).json({ error: "Invalid time range" });
+            }
+            targetDate = new Date(checkFrom);
+            targetDate.setHours(0, 0, 0, 0);
+        }
+        else {
+            const now = new Date();
+            const dayDiff = (dayOfWeek - now.getDay() + 7) % 7;
+            targetDate = new Date(now);
+            targetDate.setDate(now.getDate() + (dayDiff === 0 ? 7 : dayDiff));
+            targetDate.setHours(0, 0, 0, 0);
+            checkFrom = new Date(targetDate);
+            checkFrom.setHours(startHour, 0, 0, 0);
+            checkTo = new Date(targetDate);
+            checkTo.setHours(endHour, 0, 0, 0);
+        }
         const results = entries.map((entry) => {
-            if (!entry.user) {
-                // Guest participant without a user account → assume free (no calendar to check)
-                return {
-                    userId: entry.userId,
-                    name: entry.name,
-                    free: true,
-                };
-            }
-            let hasConflict = false;
-            for (const account of entry.user.calendarAccounts) {
-                for (const event of account.events) {
-                    const eStart = new Date(event.startTime);
-                    const eEnd = new Date(event.endTime);
-                    if (eStart < checkTo && eEnd > checkFrom) {
-                        hasConflict = true;
-                        break;
-                    }
-                }
-                if (hasConflict)
-                    break;
-            }
+            const free = isEntryFree(entry, checkFrom, checkTo);
             return {
                 userId: entry.userId,
                 name: entry.name,
-                free: !hasConflict,
+                free,
             };
         });
         res.json({
@@ -193,6 +209,54 @@ exports.availabilityRouter.post("/check/:roomId", async (req, res) => {
     catch (error) {
         console.error("Check error:", error);
         res.status(500).json({ error: "Failed to check availability" });
+    }
+});
+exports.availabilityRouter.post("/slots/:roomId", async (req, res) => {
+    try {
+        const roomId = req.params.roomId;
+        const { from, to, slotMinutes } = req.body;
+        if (!from || !to) {
+            return res.status(400).json({ error: "from and to are required" });
+        }
+        const checkFrom = new Date(from);
+        const checkTo = new Date(to);
+        if (isNaN(checkFrom.getTime()) || isNaN(checkTo.getTime()) || checkTo <= checkFrom) {
+            return res.status(400).json({ error: "Invalid time range" });
+        }
+        const entries = await loadCheckEntries(roomId);
+        if (!entries)
+            return res.status(404).json({ error: "Room not found" });
+        const stepMs = (slotMinutes || 60) * 60 * 1000;
+        const slots = [];
+        let start = new Date(checkFrom);
+        while (start.getTime() < checkTo.getTime()) {
+            const end = new Date(Math.min(start.getTime() + stepMs, checkTo.getTime()));
+            const row = entries.map((entry) => ({
+                userId: entry.userId,
+                name: entry.name,
+                free: isEntryFree(entry, start, end),
+            }));
+            const freeCount = row.filter((r) => r.free).length;
+            slots.push({
+                start: start.toISOString(),
+                end: end.toISOString(),
+                freeCount,
+                total: row.length,
+                participants: row,
+            });
+            start = new Date(end);
+        }
+        res.json({
+            from: checkFrom.toISOString(),
+            to: checkTo.toISOString(),
+            slotMinutes: stepMs / 60000,
+            slots,
+            totalParticipants: entries.length,
+        });
+    }
+    catch (error) {
+        console.error("Slots error:", error);
+        res.status(500).json({ error: "Failed to compute availability slots" });
     }
 });
 exports.availabilityRouter.post("/finalize/:roomId", async (req, res) => {

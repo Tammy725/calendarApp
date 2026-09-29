@@ -40,6 +40,7 @@ model User {
   roomParticipants RoomParticipant[]
   ownedRooms       SchedulingRoom[]
   availabilitySlots AvailabilitySlot[]
+  busyBlocks       BusyBlock[]
 
   @@map("users")
 }
@@ -88,6 +89,20 @@ model CalendarEvent {
   @@index([startTime, endTime])
   @@index([calendarAccountId])
   @@map("calendar_events")
+}
+
+model BusyBlock {
+  id        String   @id @default(uuid())
+  userId    String
+  startTime DateTime
+  endTime   DateTime
+  source    String   @default("manual")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startTime])
+  @@map("busy_blocks")
 }
 
 model SchedulingRoom {

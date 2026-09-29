@@ -1,6 +1,6 @@
 import { connectSocket, disconnectSocket, joinRoom } from "@/lib/socket";
 import { inviteLink } from "@/lib/invite-url";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import {
   createRoom,
   fetchParticipantsByRoom,
@@ -11,6 +11,8 @@ import {
   type ParticipantRow,
 } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { calendarApi } from "@/lib/api/calendar";
+import { userApi } from "@/lib/api/user";
 import DateTimePicker, {
   type DateTimePickerChangeEvent,
 } from "@react-native-community/datetimepicker";
@@ -568,6 +570,34 @@ export default function HomeScreen() {
       next[hourIdx][dayIdx] = !next[hourIdx][dayIdx];
       return next;
     });
+  }
+
+  function buildMyBusyBlocks(): { start: string; end: string }[] {
+    const blocks: { start: string; end: string }[] = [];
+    for (let ri = 0; ri < 24; ri++) {
+      for (let ci = 0; ci < dayColumns.length; ci++) {
+        const userBlocked = userGrid[ri]?.[ci];
+        const googleBlocked = googleBusyGrid[ri]?.[ci];
+        if (!userBlocked && !googleBlocked) continue;
+        const start = new Date(dayColumns[ci].date);
+        start.setHours(parseInt(HOURS[ri], 10), 0, 0, 0);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        blocks.push({ start: start.toISOString(), end: end.toISOString() });
+      }
+    }
+    return blocks;
+  }
+
+  async function uploadMyBusyBlocks() {
+    const self = useAuthStore.getState().user;
+    if (!self) return;
+    const blocks = buildMyBusyBlocks();
+    if (!blocks.length) return;
+    try {
+      await userApi.uploadBusyBlocks(blocks);
+    } catch (e) {
+      console.warn("[busy-blocks] upload failed:", e);
+    }
   }
 
   function getModifiedHeatmap(): number[][] {
@@ -1462,8 +1492,13 @@ function formatCellTime(hourIdx: number): string {
                 joinRoom(code);
                 await joinRoomAsParticipant(code, "Tú");
                 await syncParticipantsFromSupabase(code);
-                setScreen("invitar");
+                try {
+                  await calendarApi.syncAll();
+                } catch (e) {
+                  console.warn("[create] calendar sync skipped:", e);
+                }
                 setCompletedSteps((prev) => [...prev, "crear"]);
+                router.push(`/plan/${code}`);
               } catch (e) {
                 console.error("[create] Supabase call failed:", e);
                 Alert.alert(
@@ -1690,6 +1725,7 @@ function formatCellTime(hourIdx: number): string {
                 await Calendar.requestCalendarPermissionsAsync();
               if (status === "granted") {
                 await fetchDeviceCalendarEvents();
+                await uploadMyBusyBlocks();
                 calendarConnected.current = true;
                 setCompletedSteps((prev) => [...prev, "invitar"]);
                 pendingAlert.current = true;
@@ -2086,8 +2122,9 @@ function formatCellTime(hourIdx: number): string {
         <View style={s7.bottom}>
           <TouchableOpacity
             style={[s7.saveBtn, darkMode && { backgroundColor: "#8B7CF6" }]}
-            onPress={() => {
+            onPress={async () => {
               calendarConnected.current = true;
+              await uploadMyBusyBlocks();
               setCompletedSteps((prev) => [...prev, "invitar"]);
               setScreen("heatmap");
             }}
